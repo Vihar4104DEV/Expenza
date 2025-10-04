@@ -10,10 +10,10 @@ User = get_user_model()
 class UserCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     email = serializers.EmailField()
-    employee_id = serializers.CharField(max_length=50)
     role = serializers.ChoiceField(choices=[("Admin", "Admin"), ("Manager", "Manager"), ("Employee", "Employee")])
     password = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
     manager_id = serializers.UUIDField(required=False, allow_null=True)
+    department = serializers.CharField(max_length=100, required=False, allow_null=True, allow_blank=True)
 
     def validate_email(self, value):
         email = validate_email_address(value)
@@ -25,6 +25,27 @@ class UserCreateSerializer(serializers.Serializer):
         if value:
             validate_password_strength(value)
         return value
+    
+    def validate(self, data):
+        """Cross-field validation for Employee role requirements."""
+        role = data.get('role')
+        manager_id = data.get('manager_id')
+        department = data.get('department')
+
+        if not department or department.strip() == '':
+                raise serializers.ValidationError({
+                    "department": "Department is required"
+                })
+        
+        # If role is Employee, manager_id is required
+        if role == 'Employee':
+            if not manager_id:
+                raise serializers.ValidationError({
+                    "manager_id": "Manager is required for Employee role."
+                })
+            
+        
+        return data
 
 
 class UserUpdateSerializer(serializers.Serializer):
@@ -32,7 +53,10 @@ class UserUpdateSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False)
     role = serializers.ChoiceField(choices=[("Admin", "Admin"), ("Manager", "Manager"), ("Employee", "Employee")], required=False)
     manager_id = serializers.UUIDField(required=False, allow_null=True)
+    department = serializers.CharField(max_length=100, required=False, allow_null=True, allow_blank=True)
     is_active = serializers.BooleanField(required=False)
+    mobile_no = serializers.CharField(max_length=15, required=False, allow_null=True, allow_blank=True)
+    is_manager_approver = serializers.BooleanField(required=False)
 
     def validate_email(self, value):
         email = validate_email_address(value)
