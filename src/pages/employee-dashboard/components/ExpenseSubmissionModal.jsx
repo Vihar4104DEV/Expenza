@@ -3,8 +3,11 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import { useToastContext } from '../../../components/shared/ToastProvider';
+import expenseService from '../../../services/expenseService';
 
 const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
+  const toast = useToastContext();
   const [activeTab, setActiveTab] = useState('ocr');
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -13,23 +16,22 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     amount: '',
     date: '',
-    merchant: '',
     category: '',
     description: '',
-    currency: 'INR'
+    currency: 'USD'
   });
   const [errors, setErrors] = useState({});
   
   const fileInputRef = useRef(null);
 
   const categoryOptions = [
-    { value: 'travel', label: 'Travel' },
-    { value: 'meals', label: 'Meals & Entertainment' },
-    { value: 'office-supplies', label: 'Office Supplies' },
-    { value: 'transportation', label: 'Transportation' },
-    { value: 'lodging', label: 'Lodging' },
-    { value: 'training', label: 'Training & Development' },
-    { value: 'other', label: 'Other' }
+    { value: 'Travel', label: 'Travel' },
+    { value: 'Food', label: 'Food' },
+    { value: 'Accommodation', label: 'Accommodation' },
+    { value: 'Office', label: 'Office' },
+    { value: 'Transport', label: 'Transport' },
+    { value: 'Entertainment', label: 'Entertainment' },
+    { value: 'Other', label: 'Other' }
   ];
 
   const currencyOptions = [
@@ -64,13 +66,15 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const handleFileUpload = async (file) => {
-    if (!file?.type?.match(/image\/(jpeg|jpg|png)|application\/pdf/)) {
-      setErrors({ file: 'Please upload a JPG, PNG, or PDF file' });
+    if (!file?.type?.match(/image\/(jpeg|jpg|png|bmp|tiff)|application\/pdf/)) {
+      setErrors({ file: 'Please upload a JPG, PNG, BMP, TIFF, or PDF file' });
+      toast.error('Invalid file type. Please upload an image or PDF.');
       return;
     }
 
     if (file?.size > 10 * 1024 * 1024) {
       setErrors({ file: 'File size must be less than 10MB' });
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -78,23 +82,44 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
     setIsProcessing(true);
     setErrors({});
 
-    // Simulate OCR processing
-    setTimeout(() => {
-      const mockOcrData = {
-        amount: '45.67',
-        date: '2025-01-03',
-        merchant: 'Restaurant ABC',
-        category: 'meals',
-        confidence: 0.92
-      };
-      
-      setOcrData(mockOcrData);
-      setFormData(prev => ({
-        ...prev,
-        ...mockOcrData
-      }));
+    try {
+      // Call OCR API
+      const response = await expenseService.uploadReceiptOCR(file, {
+        category: formData.category || undefined,
+        description: formData.description || undefined
+      });
+
+      if (response.success && response.data) {
+        const { expense, ocr_result } = response.data;
+        
+        // Extract OCR data
+        const extractedData = {
+          amount: expense.amount || ocr_result?.extracted_data?.total_amount || '',
+          date: expense.expense_date || ocr_result?.extracted_data?.date || '',
+          category: expense.category || formData.category || 'Other',
+          currency: expense.original_currency || ocr_result?.extracted_data?.currency || 'USD',
+          confidence: ocr_result?.confidence_score || 0,
+          merchantName: expense.ocr_merchant_name || ocr_result?.extracted_data?.merchant_name || ''
+        };
+        
+        setOcrData(extractedData);
+        setFormData(prev => ({
+          ...prev,
+          ...extractedData,
+          description: expense.description || prev.description
+        }));
+        
+        toast.success(`Receipt processed! Confidence: ${Math.round(extractedData.confidence * 100)}%`);
+      } else {
+        throw new Error(response.message || 'OCR processing failed');
+      }
+    } catch (error) {
+      console.error('OCR processing error:', error);
+      toast.error(error.message || 'Failed to process receipt. Please enter details manually.');
+      setActiveTab('manual'); // Switch to manual entry
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   const handleInputChange = (field, value) => {
@@ -115,16 +140,16 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
     const newErrors = {};
     
     if (!formData?.amount || parseFloat(formData?.amount) <= 0) {
-      newErrors.amount = 'Please enter a valid amount';
+      newErrors.amount = 'Amount must be greater than zero';
     }
     if (!formData?.date) {
       newErrors.date = 'Please select a date';
     }
-    if (!formData?.merchant?.trim()) {
-      newErrors.merchant = 'Please enter merchant name';
-    }
     if (!formData?.category) {
       newErrors.category = 'Please select a category';
+    }
+    if (!formData?.description?.trim()) {
+      newErrors.description = 'Description is required';
     }
 
     setErrors(newErrors);
@@ -149,10 +174,9 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
       setFormData({
         amount: '',
         date: '',
-        merchant: '',
         category: '',
         description: '',
-        currency: 'INR'
+        currency: 'USD'
       });
       setUploadedFile(null);
       setOcrData(null);
@@ -248,8 +272,8 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
                               OCR Confidence: {Math.round(ocrData?.confidence * 100)}%
                             </p>
                             <div className="text-sm text-green-700 space-y-1">
-                              <p>Amount: ${ocrData?.amount}</p>
-                              <p>Merchant: {ocrData?.merchant}</p>
+                              <p>Amount: {ocrData?.currency} {ocrData?.amount}</p>
+                              {ocrData?.merchantName && <p>Merchant: {ocrData?.merchantName}</p>}
                               <p>Date: {ocrData?.date}</p>
                             </div>
                           </div>
@@ -331,21 +355,13 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
                 </div>
 
                 <Input
-                  label="Merchant"
+                  label="Description"
                   type="text"
-                  placeholder="Enter merchant name"
-                  value={formData?.merchant}
-                  onChange={(e) => handleInputChange('merchant', e?.target?.value)}
-                  error={errors?.merchant}
-                  required
-                />
-
-                <Input
-                  label="Description (Optional)"
-                  type="text"
-                  placeholder="Add any additional details"
+                  placeholder="Enter expense description (e.g., Taxi fare for client meeting)"
                   value={formData?.description}
                   onChange={(e) => handleInputChange('description', e?.target?.value)}
+                  error={errors?.description}
+                  required
                 />
               </form>
             )}

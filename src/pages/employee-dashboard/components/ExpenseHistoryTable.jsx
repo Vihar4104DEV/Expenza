@@ -6,64 +6,20 @@ const ExpenseHistoryTable = ({
   expenses = [], 
   onExpenseClick = () => {},
   onFilterChange = () => {},
-  currentFilter = 'all'
+  currentFilter = 'all',
+  isLoading = false
 }) => {
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const mockExpenses = [
-    {
-      id: 'EXP-001',
-      date: '2025-01-03',
-      merchant: 'Starbucks Coffee',
-      amount: 15.75,
-      category: 'Meals & Entertainment',
-      status: 'pending',
-      receiptUrl: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400'
-    },
-    {
-      id: 'EXP-002',
-      date: '2025-01-02',
-      merchant: 'Uber Technologies',
-      amount: 32.50,
-      category: 'Transportation',
-      status: 'approved',
-      receiptUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400'
-    },
-    {
-      id: 'EXP-003',
-      date: '2025-01-01',
-      merchant: 'Office Depot',
-      amount: 89.99,
-      category: 'Office Supplies',
-      status: 'rejected',
-      receiptUrl: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400'
-    },
-    {
-      id: 'EXP-004',
-      date: '2024-12-30',
-      merchant: 'Marriott Hotel',
-      amount: 245.00,
-      category: 'Lodging',
-      status: 'approved',
-      receiptUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400'
-    },
-    {
-      id: 'EXP-005',
-      date: '2024-12-28',
-      merchant: 'Delta Airlines',
-      amount: 450.00,
-      category: 'Travel',
-      status: 'in-progress',
-      receiptUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400'
-    }
-  ];
-
-  const displayExpenses = expenses?.length > 0 ? expenses : mockExpenses;
+  const displayExpenses = expenses || [];
 
   const getStatusBadge = (status) => {
+    // Normalize status to lowercase for comparison
+    const normalizedStatus = status?.toLowerCase();
+    
     const statusConfig = {
       pending: { color: 'bg-yellow-100 text-yellow-800', icon: 'Clock' },
       approved: { color: 'bg-green-100 text-green-800', icon: 'CheckCircle' },
@@ -71,20 +27,20 @@ const ExpenseHistoryTable = ({
       'in-progress': { color: 'bg-blue-100 text-blue-800', icon: 'RefreshCw' }
     };
 
-    const config = statusConfig?.[status] || statusConfig?.pending;
+    const config = statusConfig?.[normalizedStatus] || statusConfig?.pending;
     
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config?.color}`}>
         <Icon name={config?.icon} size={12} className="mr-1" />
-        {status?.charAt(0)?.toUpperCase() + status?.slice(1)?.replace('-', ' ')}
+        {status}
       </span>
     );
   };
 
-  const formatAmount = (amount) => {
+  const formatAmount = (amount, currency = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR'
+      currency: currency
     })?.format(amount);
   };
 
@@ -109,9 +65,10 @@ const ExpenseHistoryTable = ({
     let aValue = a?.[sortField];
     let bValue = b?.[sortField];
 
+    // Handle expense_date field from backend
     if (sortField === 'date') {
-      aValue = new Date(aValue);
-      bValue = new Date(bValue);
+      aValue = new Date(a?.expense_date || a?.date);
+      bValue = new Date(b?.expense_date || b?.date);
     }
 
     if (sortDirection === 'asc') {
@@ -123,7 +80,8 @@ const ExpenseHistoryTable = ({
 
   const filteredExpenses = sortedExpenses?.filter(expense => {
     if (currentFilter === 'all') return true;
-    return expense?.status === currentFilter;
+    // Case-insensitive status comparison
+    return expense?.status?.toLowerCase() === currentFilter?.toLowerCase();
   });
 
   const totalPages = Math.ceil(filteredExpenses?.length / itemsPerPage);
@@ -132,10 +90,10 @@ const ExpenseHistoryTable = ({
 
   const filterOptions = [
     { value: 'all', label: 'All Expenses', count: displayExpenses?.length },
-    { value: 'pending', label: 'Pending', count: displayExpenses?.filter(e => e?.status === 'pending')?.length },
-    { value: 'approved', label: 'Approved', count: displayExpenses?.filter(e => e?.status === 'approved')?.length },
-    { value: 'rejected', label: 'Rejected', count: displayExpenses?.filter(e => e?.status === 'rejected')?.length },
-    { value: 'in-progress', label: 'In Progress', count: displayExpenses?.filter(e => e?.status === 'in-progress')?.length }
+    { value: 'pending', label: 'Pending', count: displayExpenses?.filter(e => e?.status?.toLowerCase() === 'pending')?.length },
+    { value: 'approved', label: 'Approved', count: displayExpenses?.filter(e => e?.status?.toLowerCase() === 'approved')?.length },
+    { value: 'rejected', label: 'Rejected', count: displayExpenses?.filter(e => e?.status?.toLowerCase() === 'rejected')?.length },
+    { value: 'in-progress', label: 'In Progress', count: displayExpenses?.filter(e => e?.status?.toLowerCase() === 'in-progress')?.length }
   ];
 
   return (
@@ -166,6 +124,16 @@ const ExpenseHistoryTable = ({
           </div>
         </div>
       </div>
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Icon name="Loader2" size={48} className="text-primary mx-auto animate-spin mb-4" />
+            <p className="text-gray-600">Loading expenses...</p>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
@@ -217,14 +185,14 @@ const ExpenseHistoryTable = ({
                 className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatDate(expense?.date)}
+                  {formatDate(expense?.expense_date || expense?.date)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{expense?.merchant}</div>
+                  <div className="text-sm font-medium text-gray-900">{expense?.description || expense?.merchant || expense?.employee_name || 'Expense'}</div>
                   <div className="text-sm text-gray-500">{expense?.id}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                  {formatAmount(expense?.amount)}
+                  {formatAmount(expense?.amount, expense?.original_currency)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {expense?.category}
@@ -260,14 +228,14 @@ const ExpenseHistoryTable = ({
             className="p-4 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
           >
             <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-gray-900">{expense?.merchant}</div>
+              <div className="text-sm font-medium text-gray-900">{expense?.description || expense?.merchant || expense?.employee_name || 'Expense'}</div>
               {getStatusBadge(expense?.status)}
             </div>
             <div className="flex items-center justify-between mb-2">
               <div className="text-lg font-semibold text-gray-900">
-                {formatAmount(expense?.amount)}
+                {formatAmount(expense?.amount, expense?.original_currency)}
               </div>
-              <div className="text-sm text-gray-500">{formatDate(expense?.date)}</div>
+              <div className="text-sm text-gray-500">{formatDate(expense?.expense_date || expense?.date)}</div>
             </div>
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-500">{expense?.category}</div>
@@ -312,7 +280,7 @@ const ExpenseHistoryTable = ({
         </div>
       )}
       {/* Empty State */}
-      {filteredExpenses?.length === 0 && (
+      {!isLoading && filteredExpenses?.length === 0 && (
         <div className="p-12 text-center">
           <Icon name="Receipt" size={48} className="text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
@@ -329,6 +297,8 @@ const ExpenseHistoryTable = ({
             </Button>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

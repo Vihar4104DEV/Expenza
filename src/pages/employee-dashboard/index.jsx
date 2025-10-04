@@ -7,14 +7,19 @@ import SubmitExpenseButton from './components/SubmitExpenseButton';
 import ExpenseHistoryTable from './components/ExpenseHistoryTable';
 import MonthlyInsightsPanel from './components/MonthlyInsightsPanel';
 import ExpenseSubmissionModal from './components/ExpenseSubmissionModal';
+import { useToastContext } from '../../components/shared/ToastProvider';
+import expenseService from '../../services/expenseService';
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
+  const toast = useToastContext();
   const [currentFilter, setCurrentFilter] = useState('all');
   const [expenses, setExpenses] = useState([]);
   const [stats, setStats] = useState({});
   const [insights, setInsights] = useState({});
   const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(true);
 
   // Get employee data from localStorage
   const getUserData = () => {
@@ -46,36 +51,21 @@ const EmployeeDashboard = () => {
   // Get user currency
   const userCurrency = employee.company?.default_currency || 'INR';
 
-  // Mock stats data
-  const mockStats = {
-    submitted: { amount: 3245.50, count: 12, currency: userCurrency },
-    pending: { amount: 1150.75, count: 4, currency: userCurrency },
-    rejected: { amount: 0, count: 0, currency: userCurrency }
-  };
-
-  // Mock insights data
-  const mockInsights = {
-    monthlyData: [
-      { month: 'Aug', amount: 1250 },
-      { month: 'Sep', amount: 1890 },
-      { month: 'Oct', amount: 2100 },
-      { month: 'Nov', amount: 1650 },
-      { month: 'Dec', amount: 2300 },
-      { month: 'Jan', amount: 1950 }
-    ],
-    categoryData: [
-      { name: 'Travel', value: 2500, color: '#2563EB' },
-      { name: 'Meals', value: 1200, color: '#10B981' },
-      { name: 'Office Supplies', value: 800, color: '#F59E0B' },
-      { name: 'Transportation', value: 600, color: '#EF4444' },
-      { name: 'Lodging', value: 1100, color: '#8B5CF6' }
-    ]
-  };
-
+  // Initialize with empty stats
   useEffect(() => {
-    // Initialize data
-    setStats(mockStats);
-    setInsights(mockInsights);
+    const initialStats = {
+      submitted: { amount: 0, count: 0, currency: userCurrency },
+      pending: { amount: 0, count: 0, currency: userCurrency },
+      rejected: { amount: 0, count: 0, currency: userCurrency }
+    };
+    
+    const initialInsights = {
+      monthlyData: [],
+      categoryData: []
+    };
+    
+    setStats(initialStats);
+    setInsights(initialInsights);
   }, []);
 
   const handleLogout = () => {
@@ -85,42 +75,119 @@ const EmployeeDashboard = () => {
     navigate('/');
   };
 
-  const handleExpenseSubmission = (expenseData) => {
-    console.log('Expense submitted:', expenseData);
+  const handleExpenseSubmission = async (expenseData) => {
+    setIsLoading(true);
     
-    // Create new expense entry
-    const newExpense = {
-      id: `EXP-${Date.now()}`,
-      date: expenseData?.date,
-      merchant: expenseData?.merchant,
-      amount: parseFloat(expenseData?.amount),
-      category: expenseData?.category,
-      status: 'pending',
-      description: expenseData?.description,
-      currency: expenseData?.currency,
-      receiptUrl: expenseData?.file ? URL.createObjectURL(expenseData?.file) : null,
-      submittedAt: new Date()?.toISOString()
-    };
+    try {
+      // Prepare expense data for API - match backend expected format
+      const apiData = {
+        amount: parseFloat(expenseData.amount),
+        currency: expenseData.currency || 'USD',
+        category: expenseData.category,
+        description: expenseData.description,
+        date: expenseData.date,
+        receiptImage: expenseData.file // File object if uploaded
+      };
+      
+      // Call API to create expense
+      const response = await expenseService.createExpense(apiData);
+      
+      if (response.status === 1) {
+        toast.success(response.message || 'Expense submitted successfully!');
+        // Reload expenses
+        await loadExpenses();
+      } else {
+        toast.error(response.message || 'Failed to submit expense');
+      }
+    } catch (error) {
+      console.error('Error submitting expense:', error);
+      toast.error(error.message || 'An error occurred while submitting expense');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // Update expenses list
-    setExpenses(prev => [newExpense, ...prev]);
+  // Load expenses from API
+  const loadExpenses = async () => {
+    setIsLoadingExpenses(true);
+    try {
+      const response = await expenseService.getExpenses({
+        page: 1,
+        pageSize: 50
+      });
+      
+      // Handle DRF paginated response format
+      const expensesData = response?.results || response?.data?.expenses || [];
+      
+      if (expensesData.length > 0) {
+        // Map backend response to frontend format
+        const mappedExpenses = expensesData.map(expense => ({
+          id: expense.id,
+          employee_name: expense.employee?.name || expense.employee_name,
+          employee_email: expense.employee?.email,
+          employee_id: expense.employee?.employee_id,
+          department: expense.employee?.department,
+          amount: expense.amount,
+          original_currency: expense.original_currency,
+          category: expense.category,
+          description: expense.description,
+          expense_date: expense.expense_date,
+          status: expense.status,
+          current_approver: expense.current_approver?.name,
+          approval_history: expense.approval_history || [],
+          receipt_image: expense.receipt_image,
+          created_at: expense.created_at,
+          updated_at: expense.updated_at,
+          amount_display: expense.amount_display
+        }));
+        
+        setExpenses(mappedExpenses);
+        // Calculate stats
+        calculateStats(mappedExpenses);
+      } else {
+        setExpenses([]);
+        calculateStats([]);
+      }
+    } catch (error) {
+      console.error('Error loading expenses:', error);
+      toast.error('Failed to load expenses');
+    } finally {
+      setIsLoadingExpenses(false);
+    }
+  };
 
-    // Update stats
-    setStats(prev => ({
-      ...prev,
+  // Calculate stats from expenses
+  const calculateStats = (expensesList) => {
+    const userCurrency = employee.company?.default_currency || 'USD';
+    
+    // Filter by status - backend returns: Pending, In-Progress, Approved, Rejected
+    const submitted = expensesList.filter(e => ['Approved', 'In-Progress'].includes(e.status));
+    const pending = expensesList.filter(e => e.status === 'Pending');
+    const rejected = expensesList.filter(e => e.status === 'Rejected');
+    
+    setStats({
       submitted: {
-        amount: prev?.submitted?.amount + newExpense?.amount,
-        count: prev?.submitted?.count + 1
+        amount: submitted.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
+        count: submitted.length,
+        currency: userCurrency
       },
       pending: {
-        amount: prev?.pending?.amount + newExpense?.amount,
-        count: prev?.pending?.count + 1
+        amount: pending.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
+        count: pending.length,
+        currency: userCurrency
+      },
+      rejected: {
+        amount: rejected.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
+        count: rejected.length,
+        currency: userCurrency
       }
-    }));
-
-    // Show success message (you can implement toast notifications here)
-    console.log('Expense submitted successfully!');
+    });
   };
+
+  // Load expenses on mount
+  useEffect(() => {
+    loadExpenses();
+  }, []);
 
   const handleExpenseClick = (expense) => {
     console.log('Expense clicked:', expense);
@@ -176,6 +243,7 @@ const EmployeeDashboard = () => {
             onExpenseClick={handleExpenseClick}
             onFilterChange={handleFilterChange}
             currentFilter={currentFilter}
+            isLoading={isLoadingExpenses}
           />
         </div>
       </main>

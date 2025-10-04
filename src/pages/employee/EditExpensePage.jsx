@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useNavigate, useParams } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -8,6 +7,7 @@ import Select from '../../components/ui/Select';
 import TopNavigationBar from '../../components/ui/TopNavigationBar';
 import MobileBottomNavigation from '../../components/ui/MobileBottomNavigation';
 import { useToastContext } from '../../components/shared/ToastProvider';
+import expenseService from '../../services/expenseService';
 import { getSupportedCurrencies } from '../../utils/currency';
 
 const EditExpensePage = () => {
@@ -35,14 +35,7 @@ const EditExpensePage = () => {
     role: 'employee'
   };
 
-  const categories = [
-    { value: 'meals', label: 'Meals & Entertainment' },
-    { value: 'travel', label: 'Travel & Transportation' },
-    { value: 'lodging', label: 'Lodging' },
-    { value: 'office', label: 'Office Supplies' },
-    { value: 'client', label: 'Client Entertainment' },
-    { value: 'other', label: 'Other' }
-  ];
+  const categories = expenseService.getCategories();
 
   const currencies = getSupportedCurrencies().map(curr => ({
     value: curr.code,
