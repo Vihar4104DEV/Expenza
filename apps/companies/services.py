@@ -23,6 +23,7 @@ class CompanyService:
     @staticmethod
     def get_company_users(company_id, role=None):
         """Get all users for a company, optionally filtered by role"""
+        from apps.users.models import User
         queryset = User.objects.filter(company_id=company_id, is_active=True)
         if role:
             queryset = queryset.filter(role=role)

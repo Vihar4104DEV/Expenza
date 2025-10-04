@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
+from apps.core.utils.response_wrapper import api_response
 from apps.approvals.models import ApprovalWorkflow, WorkflowApprover, ExpenseApproval
 from apps.approvals.serializers import (
     ApprovalWorkflowSerializer, ApprovalWorkflowCreateSerializer, ApprovalWorkflowUpdateSerializer,
@@ -46,96 +47,96 @@ class ApprovalWorkflowViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_approver(self, request, pk=None):
         """Add an approver to the workflow"""
-        workflow = self.get_object()
-        approver_data = request.data
-        approver_data['workflow'] = workflow.id
-        
-        serializer = WorkflowApproverCreateSerializer(data=approver_data)
-        
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            workflow = self.get_object()
+            approver_data = request.data
+            approver_data['workflow'] = workflow.id
+            
+            serializer = WorkflowApproverCreateSerializer(data=approver_data)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return api_response(data=serializer.data, message="Approver added successfully", status_code=201)
+            
+            return api_response(message="Validation Error", error=serializer.errors, status_code=400)
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=True, methods=['put'])
     def update_approvers(self, request, pk=None):
         """Update all approvers for the workflow"""
-        workflow = self.get_object()
-        approvers_data = request.data.get('approvers', [])
-        
         try:
+            workflow = self.get_object()
+            approvers_data = request.data.get('approvers', [])
+            
             ApprovalWorkflowService.update_workflow_approvers(workflow, approvers_data)
             
             # Return updated workflow
             serializer = ApprovalWorkflowSerializer(workflow)
-            return Response(serializer.data)
+            return api_response(data=serializer.data, message="Workflow approvers updated successfully")
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=True, methods=['post'])
     def reorder_approvers(self, request, pk=None):
         """Reorder approvers in the workflow"""
-        workflow = self.get_object()
-        serializer = WorkflowReorderSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            try:
+        try:
+            workflow = self.get_object()
+            serializer = WorkflowReorderSerializer(data=request.data)
+            
+            if serializer.is_valid():
                 ApprovalWorkflowService.reorder_approvers(
                     workflow, 
                     serializer.validated_data['approver_orders']
                 )
-                return Response({'message': 'Approvers reordered successfully'})
-            except Exception as e:
-                return Response(
-                    {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return api_response(message="Approvers reordered successfully")
+            
+            return api_response(message="Validation Error", error=serializer.errors, status_code=400)
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=True, methods=['post'])
     def set_default(self, request, pk=None):
         """Set workflow as default for the company"""
-        workflow = self.get_object()
-        
         try:
+            workflow = self.get_object()
+            
             ApprovalWorkflowService.set_default_workflow(
                 request.user.company, workflow
             )
-            return Response({'message': 'Workflow set as default'})
+            return api_response(message="Workflow set as default")
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         """Get workflow statistics"""
-        workflow = self.get_object()
-        stats = ApprovalWorkflowService.get_workflow_statistics(workflow)
-        return Response(stats)
+        try:
+            workflow = self.get_object()
+            stats = ApprovalWorkflowService.get_workflow_statistics(workflow)
+            return api_response(data=stats, message="Workflow statistics retrieved successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=False, methods=['get'])
     def default(self, request):
         """Get default workflow for the company"""
-        workflow = ApprovalWorkflow.objects.filter(
-            company=request.user.company,
-            is_default=True
-        ).first()
-        
-        if workflow:
-            serializer = ApprovalWorkflowSerializer(workflow)
-            return Response(serializer.data)
-        else:
-            return Response(
-                {'error': 'No default workflow found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        try:
+            workflow = ApprovalWorkflow.objects.filter(
+                company=request.user.company,
+                is_default=True
+            ).first()
+            
+            if workflow:
+                serializer = ApprovalWorkflowSerializer(workflow)
+                return api_response(data=serializer.data, message="Default workflow retrieved successfully")
+            else:
+                return api_response(
+                    message="No default workflow found",
+                    status_code=404
+                )
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
 
 
 class WorkflowApproverViewSet(viewsets.ModelViewSet):
@@ -188,8 +189,8 @@ class ExpenseApprovalViewSet(viewsets.ModelViewSet):
         
         # Manager can see approvals for their team
         elif self.request.user.role == 'Manager':
-            from apps.users.services import UserService
-            subordinates = UserService.get_user_subordinates(self.request.user)
+            from apps.users.services import get_user_subordinates
+            subordinates = get_user_subordinates(self.request.user)
             return ExpenseApproval.objects.filter(
                 Q(expense__employee__in=subordinates) | Q(approver=self.request.user)
             )
@@ -201,20 +202,23 @@ class ExpenseApprovalViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def pending(self, request):
         """Get pending approvals for current user"""
-        pending_approvals = ExpenseApprovalService.get_pending_approvals_for_user(
-            request.user
-        )
-        serializer = ExpenseApprovalSerializer(pending_approvals, many=True)
-        return Response(serializer.data)
+        try:
+            pending_approvals = ExpenseApprovalService.get_pending_approvals_for_user(
+                request.user
+            )
+            serializer = ExpenseApprovalSerializer(pending_approvals, many=True)
+            return api_response(data=serializer.data, message="Pending approvals retrieved successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=True, methods=['post'])
     def decide(self, request, pk=None):
         """Make an approval decision"""
-        approval = self.get_object()
-        serializer = ApprovalDecisionSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            try:
+        try:
+            approval = self.get_object()
+            serializer = ApprovalDecisionSerializer(data=request.data)
+            
+            if serializer.is_valid():
                 ExpenseApprovalService.process_approval_decision(
                     approval.id,
                     serializer.validated_data['decision'],
@@ -224,29 +228,26 @@ class ExpenseApprovalViewSet(viewsets.ModelViewSet):
                 # Return updated approval
                 approval.refresh_from_db()
                 serializer = ExpenseApprovalSerializer(approval)
-                return Response(serializer.data)
-            except Exception as e:
-                return Response(
-                    {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return api_response(data=serializer.data, message="Approval decision processed successfully")
+            
+            return api_response(message="Validation Error", error=serializer.errors, status_code=400)
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=True, methods=['post'])
     def escalate(self, request, pk=None):
         """Escalate an approval"""
-        approval = self.get_object()
-        escalated_to_id = request.data.get('escalated_to')
-        reason = request.data.get('reason', '')
-        
-        if not escalated_to_id:
-            return Response(
-                {'error': 'escalated_to is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         try:
+            approval = self.get_object()
+            escalated_to_id = request.data.get('escalated_to')
+            reason = request.data.get('reason', '')
+            
+            if not escalated_to_id:
+                return api_response(
+                    message='escalated_to is required',
+                    status_code=400
+                )
+            
             from apps.users.models import User
             escalated_to = User.objects.get(
                 id=escalated_to_id,
@@ -259,36 +260,36 @@ class ExpenseApprovalViewSet(viewsets.ModelViewSet):
             )
             
             serializer = ExpenseApprovalSerializer(escalation)
-            return Response(serializer.data)
+            return api_response(data=serializer.data, message="Approval escalated successfully")
         except User.DoesNotExist:
-            return Response(
-                {'error': 'Escalation target not found'},
-                status=status.HTTP_400_BAD_REQUEST
+            return api_response(
+                message='Escalation target not found',
+                status_code=400
             )
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=False, methods=['get'])
     def statistics(self, request):
         """Get approval statistics for the company"""
-        stats = ExpenseApprovalService.get_approval_statistics(request.user.company)
-        return Response(stats)
+        try:
+            stats = ExpenseApprovalService.get_approval_statistics(request.user.company)
+            return api_response(data=stats, message="Approval statistics retrieved successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
     
     @action(detail=False, methods=['get'])
     def history(self, request):
         """Get approval history for a specific expense"""
-        expense_id = request.query_params.get('expense_id')
-        
-        if not expense_id:
-            return Response(
-                {'error': 'expense_id parameter is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         try:
+            expense_id = request.query_params.get('expense_id')
+            
+            if not expense_id:
+                return api_response(
+                    message='expense_id parameter is required',
+                    status_code=400
+                )
+            
             from apps.expenses.models import Expense
             expense = Expense.objects.get(
                 id=expense_id,
@@ -298,16 +299,18 @@ class ExpenseApprovalViewSet(viewsets.ModelViewSet):
             # Check permissions
             if (request.user.role == 'Employee' and expense.employee != request.user) or \
                (request.user.role == 'Manager' and expense.employee.manager != request.user):
-                return Response(
-                    {'error': 'You are not authorized to view this expense'},
-                    status=status.HTTP_403_FORBIDDEN
+                return api_response(
+                    message='You are not authorized to view this expense',
+                    status_code=403
                 )
             
             history = ExpenseApprovalService.get_approval_history_for_expense(expense)
             serializer = ExpenseApprovalSerializer(history, many=True)
-            return Response(serializer.data)
+            return api_response(data=serializer.data, message="Approval history retrieved successfully")
         except Expense.DoesNotExist:
-            return Response(
-                {'error': 'Expense not found'},
-                status=status.HTTP_404_NOT_FOUND
+            return api_response(
+                message='Expense not found',
+                status_code=404
             )
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)

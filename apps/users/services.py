@@ -9,6 +9,8 @@ from typing import Optional, Tuple, Iterable
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.validators import validate_email_address, validate_password_strength
 from apps.companies.models import Company
@@ -112,4 +114,70 @@ def change_password(user: User, new_password: str) -> None:
     validate_password_strength(new_password)
     user.password = make_password(new_password)
     user.save(update_fields=['password', 'updated_at'])
+
+
+# Additional services for approval system
+def authenticate_user(email: str, password: str) -> Optional[User]:
+    """Authenticate user and return user object"""
+    user = authenticate(email=email, password=password)
+    if user and user.is_active:
+        return user
+    return None
+
+
+def issue_tokens_for_user(user: User) -> dict:
+    """Issue JWT tokens for user"""
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token)
+    }
+
+
+def get_user_subordinates(user: User) -> Iterable[User]:
+    """Get all subordinates of a user"""
+    if user.role in ['Admin', 'Manager']:
+        return User.objects.filter(manager=user, is_active=True)
+    return User.objects.none()
+
+
+def get_user_team_expenses(user: User):
+    """Get expenses for user's team"""
+    from apps.expenses.models import Expense
+    
+    if user.role == 'Admin':
+        return Expense.objects.filter(company=user.company)
+    elif user.role == 'Manager':
+        subordinates = User.objects.filter(manager=user, is_active=True)
+        return Expense.objects.filter(employee__in=subordinates)
+    else:
+        return Expense.objects.filter(employee=user)
+
+
+def update_user_role(user: User, new_role: str, manager: Optional[User] = None) -> User:
+    """Update user role and manager assignment"""
+    with transaction.atomic():
+        user.role = new_role
+        if manager:
+            user.manager = manager
+        user.save()
+        return user
+
+
+def get_approvers_for_company(company: Company) -> Iterable[User]:
+    """Get all users who can approve expenses for a company"""
+    return User.objects.filter(
+        company=company,
+        role__in=['Admin', 'Manager'],
+        is_active=True
+    )
+
+
+def get_user_pending_approvals(user: User):
+    """Get expenses pending approval by user"""
+    from apps.expenses.models import Expense
+    return Expense.objects.filter(
+        current_approver=user,
+        status='In-Progress'
+    )
 

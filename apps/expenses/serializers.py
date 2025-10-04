@@ -31,7 +31,7 @@ class ExpenseCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
         fields = [
-            'employee', 'company', 'amount', 'original_currency', 'category',
+            'amount', 'original_currency', 'category',
             'description', 'expense_date', 'receipt_image'
         ]
     

@@ -167,13 +167,18 @@ class LoginView(APIView):
             serializer.is_valid(raise_exception=True)
             data = serializer.validated_data
             user = authenticate_user(data["email"], data["password"])
+            print("user",user)
             if not user:
                 return api_response(message="Invalid credentials", status_code=401)
+            print("user",user)
             if not user.is_active or user.deleted_at:
                 return api_response(message="User is inactive", status_code=403)
+            print("before generating tokens")
             tokens = issue_tokens_for_user(user)
+            print("tokens",tokens)
             payload = build_user_payload(user)
             payload.update({"tokens": tokens})
+            print("payload",payload)
             return api_response(data=payload, message="Login successful")
         except serializers.ValidationError as e:
             return api_response(message="Validation Error", error=e.detail, status_code=400)

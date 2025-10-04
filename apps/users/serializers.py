@@ -56,3 +56,49 @@ class UserDetailSerializer(serializers.Serializer):
     @staticmethod
     def from_user(user: User) -> dict:
         return build_user_payload(user)
+
+
+# Additional serializers for approval system
+class UserSerializer(serializers.ModelSerializer):
+    """Serializer for User model with additional fields for approval system"""
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    manager_name = serializers.CharField(source='manager.name', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'company', 'company_name', 'name', 'email', 'mobile_no', 
+            'employee_id', 'department', 'role', 'manager', 'manager_name',
+            'is_manager_approver', 'is_email_verified', 'created_at', 'updated_at', 'is_active'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class UserPasswordChangeSerializer(serializers.Serializer):
+    """Serializer for changing user password"""
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password_strength])
+    new_password_confirm = serializers.CharField(required=True)
+    
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError("New passwords don't match")
+        return attrs
+    
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Old password is incorrect")
+        return value
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for user lists"""
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'name', 'email', 'employee_id', 'role', 
+            'department', 'company_name', 'is_active', 'is_email_verified'
+        ]

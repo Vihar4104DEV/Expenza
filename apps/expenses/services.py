@@ -187,7 +187,7 @@ class ExpenseService:
                 approver=approver,
                 decision='Pending'
             ).first()
-            
+            print("got expense")
             if not approval:
                 raise ValueError("No pending approval found for this approver")
             
@@ -195,6 +195,7 @@ class ExpenseService:
             approval.comments = comments
             approval.decided_at = timezone.now()
             approval.save()
+            print("saved the approval partial")
             
             if decision == 'Rejected':
                 expense.status = 'Rejected'
