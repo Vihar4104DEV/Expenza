@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from rest_framework import serializers
 from decimal import Decimal
 
-from .models import Expense
+from .models import Expense, ExpenseLineItem
 
 User = get_user_model()
 
@@ -105,3 +106,73 @@ class ExpenseDetailSerializer(serializers.Serializer):
     approval_history = ApprovalHistorySerializer(many=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
+
+
+class OCRReceiptUploadSerializer(serializers.Serializer):
+    """Serializer for OCR receipt upload."""
+
+    receipt_image = serializers.ImageField(required=True)
+    category = serializers.ChoiceField(choices=Expense.CATEGORY_CHOICES, required=False)
+    description = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_receipt_image(self, value):
+        """Validate receipt image file."""
+        max_size = getattr(settings, 'OCR_MAX_IMAGE_SIZE', 10485760)  # 10MB default
+        if value.size > max_size:
+            max_mb = max_size / (1024 * 1024)
+            raise serializers.ValidationError(f"Image file too large. Maximum size is {max_mb:.1f}MB.")
+
+        supported_formats = getattr(settings, 'OCR_SUPPORTED_FORMATS', ['image/jpeg', 'image/jpg', 'image/png'])
+        if value.content_type not in supported_formats:
+            formats_str = ', '.join([f.split('/')[-1].upper() for f in supported_formats])
+            raise serializers.ValidationError(f"Unsupported file format. Supported formats: {formats_str}")
+
+        return value
+
+
+class ExpenseLineItemSerializer(serializers.Serializer):
+    """Serializer for expense line items."""
+
+    id = serializers.UUIDField(read_only=True)
+    description = serializers.CharField()
+    quantity = serializers.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    category = serializers.CharField(allow_null=True)
+    ocr_confidence = serializers.FloatField(allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+
+class OCRResultSerializer(serializers.Serializer):
+    """Serializer for OCR processing results."""
+
+    success = serializers.BooleanField()
+    confidence_score = serializers.FloatField(allow_null=True)
+    extracted_data = serializers.DictField(allow_null=True)
+    error = serializers.CharField(allow_null=True)
+
+
+class CurrencyConversionSerializer(serializers.Serializer):
+    """Serializer for currency conversion requests."""
+
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
+    from_currency = serializers.CharField(max_length=3)
+    to_currency = serializers.CharField(max_length=3)
+
+
+class CountryCurrencySerializer(serializers.Serializer):
+    """Serializer for country and currency data."""
+
+    countries = serializers.DictField()
+
+
+class EnhancedExpenseDetailSerializer(ExpenseDetailSerializer):
+    """Enhanced expense detail serializer with OCR fields."""
+
+    ocr_extracted_currency = serializers.CharField(allow_null=True)
+    ocr_confidence_score = serializers.FloatField(allow_null=True)
+    merchant_address = serializers.CharField(allow_null=True)
+    receipt_total = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
+    tax_amount = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
+    processing_status = serializers.CharField()
+    line_items = ExpenseLineItemSerializer(many=True, read_only=True)

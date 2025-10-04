@@ -209,6 +209,20 @@ UPDATE_CANCEL_SUBSCRIPTION_URL = os.environ.get('UPDATE_CANCEL_SUBSCRIPTION_URL'
 CANCEL_SUBSCRIPTION_URL = os.environ.get('CANCEL_SUBSCRIPTION_URL',None)
 FRONTEND_URL = os.environ.get('FRONTEND_URL',None)
 
+##### OCR CONFIGURATION #######
+TESSERACT_CMD = os.environ.get('TESSERACT_CMD', 'tesseract')
+OCR_CONFIDENCE_THRESHOLD = float(os.environ.get('OCR_CONFIDENCE_THRESHOLD', '0.5'))
+OCR_MAX_IMAGE_SIZE = int(os.environ.get('OCR_MAX_IMAGE_SIZE', '10485760'))  # 10MB
+OCR_SUPPORTED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/tiff']
+
+# API Configuration for external services
+CURRENCY_API_TIMEOUT = int(os.environ.get('CURRENCY_API_TIMEOUT', '10'))
+COUNTRIES_API_TIMEOUT = int(os.environ.get('COUNTRIES_API_TIMEOUT', '10'))
+
+# Optional: Google Vision API for better OCR (if available)
+GOOGLE_VISION_API_KEY = os.environ.get('GOOGLE_VISION_API_KEY', None)
+USE_GOOGLE_VISION = os.environ.get('USE_GOOGLE_VISION', 'False').lower() == 'true'
+
 
 
 

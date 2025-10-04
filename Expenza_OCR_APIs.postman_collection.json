@@ -1,0 +1,803 @@
+{
+	"info": {
+		"_postman_id": "expense-ocr-api-collection",
+		"name": "Expenza OCR & Expense APIs",
+		"description": "Complete API collection for OCR receipt processing, currency conversion, and expense management in Expenza system.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "expenza-apis"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.data.access) {",
+									"        pm.environment.set('jwt_token', response.data.access);",
+									"        pm.environment.set('refresh_token', response.data.refresh);",
+									"        console.log('✅ JWT token saved to environment');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{user_email}}\",\n    \"password\": \"{{user_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login",
+								""
+							]
+						},
+						"description": "Login to get JWT token for authentication"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints"
+		},
+		{
+			"name": "🔤 OCR Processing",
+			"item": [
+				{
+					"name": "Upload Receipt for OCR",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('OCR data extracted', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data.ocr_result).to.exist;",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.expense) {",
+									"        pm.environment.set('created_expense_id', response.data.expense.id);",
+									"        console.log('✅ Expense ID saved:', response.data.expense.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "receipt_image",
+									"type": "file",
+									"src": [],
+									"description": "Upload receipt image (JPEG, PNG, BMP, TIFF)"
+								},
+								{
+									"key": "category",
+									"value": "Food",
+									"type": "text",
+									"description": "Optional: Expense category"
+								},
+								{
+									"key": "description",
+									"value": "OCR processed receipt",
+									"type": "text",
+									"description": "Optional: Manual description override"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expenses/ocr/upload/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"ocr",
+								"upload",
+								""
+							]
+						},
+						"description": "Upload receipt image and automatically create expense with OCR-extracted data. The system will:\n1. Extract text using OCR\n2. Parse merchant name, amount, date, currency\n3. Create expense with extracted data\n4. Return confidence scores"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{jwt_token}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "receipt_image",
+											"type": "file",
+											"src": "receipt.jpg"
+										},
+										{
+											"key": "category",
+											"value": "Food"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/expenses/ocr/upload/",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"expenses",
+										"ocr",
+										"upload",
+										""
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Receipt processed and expense created successfully\",\n    \"data\": {\n        \"expense\": {\n            \"id\": \"uuid-here\",\n            \"amount\": \"45.67\",\n            \"original_currency\": \"USD\",\n            \"category\": \"Food\",\n            \"description\": \"Expense at McDonald's\",\n            \"expense_date\": \"2024-01-15\",\n            \"processing_status\": \"completed\",\n            \"ocr_confidence_score\": 0.85,\n            \"ocr_merchant_name\": \"McDonald's\",\n            \"ocr_extracted_amount\": \"45.67\",\n            \"ocr_extracted_currency\": \"USD\",\n            \"ocr_extracted_date\": \"2024-01-15\"\n        },\n        \"ocr_result\": {\n            \"success\": true,\n            \"confidence_score\": 0.85,\n            \"extracted_data\": {\n                \"merchant_name\": \"McDonald's\",\n                \"total_amount\": \"45.67\",\n                \"currency\": \"USD\",\n                \"date\": \"2024-01-15\",\n                \"tax_amount\": \"3.67\"\n            }\n        }\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Reprocess OCR for Expense",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('OCR reprocessing completed', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data.ocr_result).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expenses/{{created_expense_id}}/ocr/process/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"{{created_expense_id}}",
+								"ocr",
+								"process",
+								""
+							]
+						},
+						"description": "Reprocess OCR for an existing expense. Useful if:\n- Initial OCR processing failed\n- You want to update extraction results\n- Processing status shows 'failed'"
+					},
+					"response": []
+				}
+			],
+			"description": "OCR receipt processing endpoints"
+		},
+		{
+			"name": "💱 Currency & Location",
+			"item": [
+				{
+					"name": "Convert Currency",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Conversion successful', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data.converted_amount).to.exist;",
+									"    pm.expect(response.data.converted_amount).to.be.a('string');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 100.00,\n    \"from_currency\": \"USD\",\n    \"to_currency\": \"EUR\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expenses/currency/convert/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"currency",
+								"convert",
+								""
+							]
+						},
+						"description": "Convert currency amounts using live exchange rates from exchangerate-api.com"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{jwt_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"amount\": 100.00,\n    \"from_currency\": \"USD\",\n    \"to_currency\": \"EUR\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/expenses/currency/convert/",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"expenses",
+										"currency",
+										"convert",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Currency conversion successful\",\n    \"data\": {\n        \"original_amount\": \"100.00\",\n        \"from_currency\": \"USD\",\n        \"to_currency\": \"EUR\",\n        \"converted_amount\": \"85.23\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Countries & Currencies",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Countries data exists', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data.countries).to.exist;",
+									"    pm.expect(response.data.total_countries).to.be.above(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expenses/countries-currencies/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"countries-currencies",
+								""
+							]
+						},
+						"description": "Get list of all countries and their supported currencies from REST Countries API"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{jwt_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/expenses/countries-currencies/",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"expenses",
+										"countries-currencies",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Countries and currencies data retrieved successfully\",\n    \"data\": {\n        \"countries\": {\n            \"United States\": {\n                \"currencies\": [\"USD\"],\n                \"primary_currency\": \"USD\"\n            },\n            \"Germany\": {\n                \"currencies\": [\"EUR\"],\n                \"primary_currency\": \"EUR\"\n            }\n        },\n        \"total_countries\": 195\n    }\n}"
+						}
+					]
+				}
+			],
+			"description": "Currency conversion and location services"
+		},
+		{
+			"name": "📊 Expense Management",
+			"item": [
+				{
+					"name": "List Expenses",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Expenses list exists', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data.expenses).to.exist;",
+									"    pm.expect(response.data.pagination).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expenses/?page=1&page_size=10&status=Pending&category=Food&search=McDonald",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								""
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "page_size",
+									"value": "10",
+									"description": "Items per page"
+								},
+								{
+									"key": "status",
+									"value": "Pending",
+									"description": "Filter by status"
+								},
+								{
+									"key": "category",
+									"value": "Food",
+									"description": "Filter by category"
+								},
+								{
+									"key": "search",
+									"value": "McDonald",
+									"description": "Search in names, descriptions"
+								}
+							]
+						},
+						"description": "List expenses with filters and pagination. Role-based access:\n- Admin: All company expenses\n- Manager: Subordinate expenses\n- Employee: Own expenses only"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Expense (Manual)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.id) {",
+									"        pm.environment.set('manual_expense_id', response.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 75.50,\n    \"original_currency\": \"USD\",\n    \"category\": \"Travel\",\n    \"description\": \"Taxi to airport\",\n    \"expense_date\": \"2024-01-15\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expenses/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								""
+							]
+						},
+						"description": "Create expense manually without OCR"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Expense Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Expense details exist', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data.id).to.exist;",
+									"    pm.expect(response.data.employee).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expenses/{{created_expense_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"{{created_expense_id}}",
+								""
+							]
+						},
+						"description": "Get detailed expense information including OCR data and approval history"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Expense",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 50.00,\n    \"description\": \"Updated expense description\",\n    \"category\": \"Food\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expenses/{{created_expense_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"{{created_expense_id}}",
+								""
+							]
+						},
+						"description": "Update expense (only if status is Pending)"
+					},
+					"response": []
+				},
+				{
+					"name": "Track Expense",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Tracking info exists', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data.tracking_summary).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expenses/{{created_expense_id}}/track/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"{{created_expense_id}}",
+								"track",
+								""
+							]
+						},
+						"description": "Track expense approval status and history"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Expense",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expenses/{{manual_expense_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expenses",
+								"{{manual_expense_id}}",
+								""
+							]
+						},
+						"description": "Delete expense (only if status is Pending)"
+					},
+					"response": []
+				}
+			],
+			"description": "Complete expense management endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"console.log('🚀 Making request to:', pm.request.url.toString());"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"pm.test('Response time is less than 5000ms', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"pm.test('Response has proper structure', function () {",
+					"    if (pm.response.code >= 200 && pm.response.code < 300) {",
+					"        const response = pm.response.json();",
+					"        pm.expect(response).to.have.property('success');",
+					"        pm.expect(response).to.have.property('message');",
+					"    }",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "created_expense_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "manual_expense_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_email",
+			"value": "admin@example.com",
+			"type": "string"
+		},
+		{
+			"key": "user_password",
+			"value": "password123",
+			"type": "string"
+		}
+	]
+}

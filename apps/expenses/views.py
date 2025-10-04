@@ -1,3 +1,4 @@
+import logging
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +7,8 @@ from rest_framework import serializers
 
 from apps.core.utils.response_wrapper import api_response
 from apps.core.utils.exceptions import extract_first_error_message
+
+logger = logging.getLogger(__name__)
 from .services import (
     create_expense,
     update_expense,
@@ -13,10 +16,19 @@ from .services import (
     list_expenses,
     get_expense_by_id,
     build_expense_detail_payload,
+    create_expense_with_ocr,
+    process_receipt_ocr,
+    get_countries_and_currencies,
+    convert_currency_api,
 )
 from .serializers import (
     ExpenseCreateSerializer,
     ExpenseUpdateSerializer,
+    OCRReceiptUploadSerializer,
+    OCRResultSerializer,
+    CurrencyConversionSerializer,
+    CountryCurrencySerializer,
+    EnhancedExpenseDetailSerializer,
 )
 
 User = get_user_model()
@@ -353,6 +365,214 @@ class ExpenseTrackView(APIView):
             print(f"Error tracking expense: {str(e)}")
             return api_response(
                 message=str(e) if str(e) else "Failed to retrieve expense tracking information",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                success=False
+            )
+
+
+# ========== OCR AND CURRENCY API ENDPOINTS ==========
+
+class OCRReceiptUploadView(APIView):
+    """Upload receipt image for automatic OCR processing and expense creation."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Upload receipt image and create expense with OCR auto-extraction.
+
+        This endpoint:
+        1. Accepts a receipt image
+        2. Processes it with OCR to extract text
+        3. Parses the text to extract expense data (amount, date, merchant, etc.)
+        4. Creates a new expense with the extracted data
+        5. Returns the created expense with OCR confidence scores
+        """
+        try:
+            serializer = OCRReceiptUploadSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            # Create expense with OCR processing
+            expense, ocr_result = create_expense_with_ocr(
+                employee=request.user,
+                company=request.user.company,
+                receipt_image=serializer.validated_data['receipt_image'],
+                category=serializer.validated_data.get('category'),
+                description=serializer.validated_data.get('description'),
+            )
+
+            # Build enhanced response with OCR data
+            expense_data = build_expense_detail_payload(expense)
+
+            response_data = {
+                'expense': expense_data,
+                'ocr_result': ocr_result,
+            }
+
+            return api_response(
+                data=response_data,
+                message="Receipt processed and expense created successfully",
+                status_code=status.HTTP_201_CREATED
+            )
+        except serializers.ValidationError as e:
+            error_message = extract_first_error_message(e.detail)
+            return api_response(
+                data=None,
+                message=error_message,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                success=False
+            )
+        except Exception as e:
+            logger.error(f"OCR upload failed: {str(e)}", exc_info=True)
+            return api_response(
+                message=str(e) if str(e) else "Failed to process receipt",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                success=False
+            )
+
+
+class OCRProcessView(APIView):
+    """Reprocess OCR for an existing expense."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, expense_id):
+        """
+        Reprocess OCR for an existing expense.
+        Useful if initial OCR failed or to update extraction results.
+        """
+        try:
+            expense = get_expense_by_id(expense_id, request.user)
+
+            if not expense:
+                return api_response(
+                    message="Expense not found or you don't have permission to access it",
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    success=False
+                )
+
+            # Only expense owner can reprocess OCR
+            if expense.employee != request.user:
+                return api_response(
+                    message="You can only reprocess OCR for your own expenses",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    success=False
+                )
+
+            # Process OCR
+            ocr_result = process_receipt_ocr(expense)
+
+            # Return updated expense with OCR results
+            expense_data = build_expense_detail_payload(expense)
+
+            response_data = {
+                'expense': expense_data,
+                'ocr_result': ocr_result,
+            }
+
+            return api_response(
+                data=response_data,
+                message="OCR processing completed",
+                status_code=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return api_response(
+                message=str(e) if str(e) else "Failed to process OCR",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                success=False
+            )
+
+
+class CurrencyConversionView(APIView):
+    """Convert currency amounts using live exchange rates."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Convert currency amounts using live exchange rates.
+
+        Body:
+        {
+            "amount": 100.00,
+            "from_currency": "USD",
+            "to_currency": "EUR"
+        }
+        """
+        try:
+            serializer = CurrencyConversionSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            amount = serializer.validated_data['amount']
+            from_currency = serializer.validated_data['from_currency']
+            to_currency = serializer.validated_data['to_currency']
+
+            converted_amount = convert_currency_api(amount, from_currency, to_currency)
+
+            if converted_amount is None:
+                return api_response(
+                    message="Currency conversion failed. Please check currency codes.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    success=False
+                )
+
+            response_data = {
+                'original_amount': amount,
+                'from_currency': from_currency,
+                'to_currency': to_currency,
+                'converted_amount': converted_amount,
+            }
+
+            return api_response(
+                data=response_data,
+                message="Currency conversion successful",
+                status_code=status.HTTP_200_OK
+            )
+        except serializers.ValidationError as e:
+            error_message = extract_first_error_message(e.detail)
+            return api_response(
+                data=None,
+                message=error_message,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                success=False
+            )
+        except Exception as e:
+            return api_response(
+                message=str(e) if str(e) else "Currency conversion failed",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                success=False
+            )
+
+
+class CountriesCurrenciesView(APIView):
+    """Get list of countries and their currencies."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Get list of all countries and their supported currencies.
+        Data is fetched from REST Countries API.
+        """
+        try:
+            countries_data = get_countries_and_currencies()
+
+            if not countries_data:
+                return api_response(
+                    message="Failed to fetch countries and currencies data",
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    success=False
+                )
+
+            response_data = {
+                'countries': countries_data,
+                'total_countries': len(countries_data),
+            }
+
+            return api_response(
+                data=response_data,
+                message="Countries and currencies data retrieved successfully",
+                status_code=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return api_response(
+                message=str(e) if str(e) else "Failed to retrieve countries and currencies",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 success=False
             )
