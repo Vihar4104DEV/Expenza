@@ -24,7 +24,7 @@ Expenza is a modern expense management platform designed to streamline expense t
 
 ## 🛠️ Tech Stack
 
-### Backend (`expenza/`)
+### Backend Branch (backend) (`expenza/`)
 - **Framework:** Django 5.2.5 with Django REST Framework 3.16.1
 - **Authentication:** JWT (Simple JWT 5.5.1)
 - **Database:** MySQL with support for PostgreSQL
@@ -38,7 +38,7 @@ Expenza is a modern expense management platform designed to streamline expense t
 - **OCR:** Tesseract.js integration
 - **Other:** CORS support, API logging, Background tasks
 
-### Frontend (`expenza_frontend/`)
+### Frontend Branch (frontend-api-integration) (`expenza_frontend/`)
 - **Framework:** React 18.2.0
 - **Build Tool:** Vite 5.0.0
 - **Styling:** TailwindCSS 3.4.6 with custom plugins
