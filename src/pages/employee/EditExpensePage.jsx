@@ -19,7 +19,7 @@ const EditExpensePage = () => {
   
   const [formData, setFormData] = useState({
     amount: '',
-    currency: 'USD',
+    currency: 'INR',
     category: '',
     merchant: '',
     date: '',
@@ -55,7 +55,7 @@ const EditExpensePage = () => {
       const mockExpense = {
         id: id,
         amount: '125.50',
-        currency: 'USD',
+        currency: 'INR',
         category: 'meals',
         merchant: 'Starbucks Coffee',
         date: '2025-10-01',
@@ -188,7 +188,7 @@ const EditExpensePage = () => {
                   <Select
                     name="currency"
                     value={formData.currency}
-                    onChange={handleChange}
+                    onChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
                     options={currencies}
                     disabled={isSubmitting}
                   />
@@ -202,7 +202,12 @@ const EditExpensePage = () => {
                   <Select
                     name="category"
                     value={formData.category}
-                    onChange={handleChange}
+                    onChange={(value) => {
+                      setFormData(prev => ({ ...prev, category: value }));
+                      if (errors.category) {
+                        setErrors(prev => ({ ...prev, category: '' }));
+                      }
+                    }}
                     options={categories}
                     placeholder="Select category"
                     error={errors.category}

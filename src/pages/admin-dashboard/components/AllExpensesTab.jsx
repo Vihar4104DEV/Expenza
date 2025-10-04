@@ -29,7 +29,7 @@ const AllExpensesTab = () => {
         department: "Marketing"
       },
       amount: 245.50,
-      currency: "USD",
+      currency: "INR",
       category: "meals",
       status: "pending",
       submittedDate: "2025-10-03T14:30:00Z",
@@ -48,7 +48,7 @@ const AllExpensesTab = () => {
         department: "Engineering"
       },
       amount: 1250.00,
-      currency: "USD",
+      currency: "INR",
       category: "training",
       status: "approved",
       submittedDate: "2025-09-28T09:15:00Z",
@@ -68,7 +68,7 @@ const AllExpensesTab = () => {
         department: "Marketing"
       },
       amount: 89.99,
-      currency: "USD",
+      currency: "INR",
       category: "supplies",
       status: "rejected",
       submittedDate: "2025-10-01T11:20:00Z",
@@ -88,7 +88,7 @@ const AllExpensesTab = () => {
         department: "Sales"
       },
       amount: 425.75,
-      currency: "USD",
+      currency: "INR",
       category: "travel",
       status: "in_review",
       submittedDate: "2025-10-04T08:45:00Z",
@@ -107,7 +107,7 @@ const AllExpensesTab = () => {
         department: "Engineering"
       },
       amount: 156.80,
-      currency: "USD",
+      currency: "INR",
       category: "meals",
       status: "approved",
       submittedDate: "2025-09-25T12:30:00Z",
@@ -207,7 +207,7 @@ const AllExpensesTab = () => {
     return icons?.[category] || 'Tag';
   };
 
-  const formatCurrency = (amount, currency = 'USD') => {
+  const formatCurrency = (amount, currency = 'INR') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency

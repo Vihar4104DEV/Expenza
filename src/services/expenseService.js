@@ -60,7 +60,7 @@ const expenseService = {
     
     const payload = {
       amount: parseFloat(expenseData.amount),
-      original_currency: expenseData.currency || 'USD',
+      original_currency: expenseData.currency || 'INR',
       category: expenseData.category,
       description: expenseData.description,
       expense_date: expenseData.date
@@ -78,7 +78,7 @@ const expenseService = {
     const formData = new FormData();
     
     formData.append('amount', parseFloat(expenseData.amount));
-    formData.append('original_currency', expenseData.currency || 'USD');
+    formData.append('original_currency', expenseData.currency || 'INR');
     formData.append('category', expenseData.category);
     formData.append('description', expenseData.description);
     formData.append('expense_date', expenseData.date);

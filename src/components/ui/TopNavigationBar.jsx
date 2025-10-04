@@ -148,7 +148,10 @@ const TopNavigationBar = ({
     const roleMap = {
       'employee': 'Employee',
       'manager': 'Manager',
-      'admin': 'Administrator'
+      'admin': 'Administrator',
+      'Employee': 'Employee',
+      'Manager': 'Manager',
+      'Admin': 'Administrator'
     };
     return roleMap?.[role] || 'User';
   };

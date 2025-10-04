@@ -4,7 +4,7 @@ import { formatCurrency } from '../../utils/formatters';
 
 const CurrencyDisplay = ({ 
   amount, 
-  currency = 'USD',
+  currency = 'INR',
   convertedAmount,
   companyCurrency,
   showConverted = true,

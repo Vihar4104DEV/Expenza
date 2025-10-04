@@ -30,7 +30,7 @@ const ExpensesPage = () => {
     {
       id: 'EXP-001',
       amount: 125.50,
-      currency: 'USD',
+      currency: 'INR',
       convertedAmount: 10450.75,
       companyCurrency: 'INR',
       category: 'Meals & Entertainment',
@@ -44,7 +44,7 @@ const ExpensesPage = () => {
     {
       id: 'EXP-002',
       amount: 450.00,
-      currency: 'USD',
+      currency: 'INR',
       convertedAmount: 37485.00,
       companyCurrency: 'INR',
       category: 'Travel & Transportation',
@@ -58,7 +58,7 @@ const ExpensesPage = () => {
     {
       id: 'EXP-003',
       amount: 89.99,
-      currency: 'USD',
+      currency: 'INR',
       convertedAmount: 7495.17,
       companyCurrency: 'INR',
       category: 'Office Supplies',
@@ -73,7 +73,7 @@ const ExpensesPage = () => {
     {
       id: 'EXP-004',
       amount: 320.00,
-      currency: 'USD',
+      currency: 'INR',
       convertedAmount: 26640.00,
       companyCurrency: 'INR',
       category: 'Lodging',
@@ -87,7 +87,7 @@ const ExpensesPage = () => {
     {
       id: 'EXP-005',
       amount: 75.25,
-      currency: 'USD',
+      currency: 'INR',
       convertedAmount: 6267.31,
       companyCurrency: 'INR',
       category: 'Travel & Transportation',
@@ -102,7 +102,7 @@ const ExpensesPage = () => {
     {
       id: 'EXP-006',
       amount: 55.00,
-      currency: 'USD',
+      currency: 'INR',
       convertedAmount: 4579.50,
       companyCurrency: 'INR',
       category: 'Meals & Entertainment',

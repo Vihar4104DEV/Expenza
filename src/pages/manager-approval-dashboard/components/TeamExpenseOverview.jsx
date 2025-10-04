@@ -17,7 +17,7 @@ const TeamExpenseOverview = ({
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  const formatCurrency = (amount, currency = 'USD') => {
+  const formatCurrency = (amount, currency = 'INR') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency

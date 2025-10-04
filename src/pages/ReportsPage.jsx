@@ -12,13 +12,30 @@ const ReportsPage = () => {
   const [dateRange, setDateRange] = useState('thisMonth');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const currentUser = {
-    name: 'David Wilson',
-    email: 'david.wilson@company.com',
-    role: 'manager',
-    department: 'Engineering',
-    teamSize: 4
+  // Get current user from localStorage
+  const getUserData = () => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return {
+        name: user.name,
+        email: user.email,
+        role: user.role?.toLowerCase() || 'manager',
+        department: user.company?.name || 'Department',
+        teamSize: 4,
+        employee_id: user.employee_id
+      };
+    }
+    return {
+      name: 'Manager User',
+      email: 'manager@company.com',
+      role: 'manager',
+      department: 'Department',
+      teamSize: 4
+    };
   };
+
+  const currentUser = getUserData();
 
   const handleLogout = () => {
     navigate('/');
@@ -144,7 +161,7 @@ const ReportsPage = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip formatter={(value) => formatCurrency(value, 'USD')} />
+                  <Tooltip formatter={(value) => formatCurrency(value, 'INR')} />
                   <Legend />
                   <Line type="monotone" dataKey="amount" stroke="#2563EB" strokeWidth={2} name="Amount" />
                 </LineChart>
@@ -170,7 +187,7 @@ const ReportsPage = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value, 'USD')} />
+                  <Tooltip formatter={(value) => formatCurrency(value, 'INR')} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -227,7 +244,7 @@ const ReportsPage = () => {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="font-semibold text-gray-900">
-                          {formatCurrency(spender.amount, 'USD')}
+                          {formatCurrency(spender.amount, 'INR')}
                         </span>
                       </td>
                     </tr>

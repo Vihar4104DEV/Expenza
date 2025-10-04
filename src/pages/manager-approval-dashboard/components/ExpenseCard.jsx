@@ -12,7 +12,7 @@ const ExpenseCard = ({
       department: 'Marketing'
     },
     amount: 125.50,
-    currency: 'USD',
+    currency: 'INR',
     merchant: 'Starbucks Coffee',
     date: '2025-10-03',
     category: 'Meals & Entertainment',

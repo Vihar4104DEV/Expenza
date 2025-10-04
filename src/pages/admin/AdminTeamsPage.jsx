@@ -13,11 +13,27 @@ const AdminTeamsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedManager, setSelectedManager] = useState(null);
 
-  const currentUser = {
-    name: 'Admin User',
-    email: 'admin@company.com',
-    role: 'admin'
+  // Get current user from localStorage
+  const getUserData = () => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return {
+        name: user.name,
+        email: user.email,
+        role: user.role?.toLowerCase() || 'admin',
+        employee_id: user.employee_id,
+        company: user.company
+      };
+    }
+    return {
+      name: 'Admin User',
+      email: 'admin@company.com',
+      role: 'admin'
+    };
   };
+
+  const currentUser = getUserData();
 
   // Managers with their teams
   const managers = [
@@ -210,7 +226,7 @@ const AdminTeamsPage = () => {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Total Expenses</span>
                         <span className="font-semibold text-gray-900">
-                          {formatCurrency(manager.totalExpenses, 'USD')}
+                          {formatCurrency(manager.totalExpenses, 'INR')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
@@ -294,7 +310,7 @@ const AdminTeamsPage = () => {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Total Expenses</span>
                         <span className="font-semibold text-gray-900">
-                          {formatCurrency(member.totalExpenses, 'USD')}
+                          {formatCurrency(member.totalExpenses, 'INR')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">

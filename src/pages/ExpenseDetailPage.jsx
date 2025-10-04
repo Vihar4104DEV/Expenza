@@ -300,7 +300,7 @@ const getMockExpense = (id) => {
   return {
     id: id || 'EXP-001',
     amount: 125.50,
-    currency: 'USD',
+    currency: 'INR',
     convertedAmount: 10450.75,
     companyCurrency: 'INR',
     category: 'Meals & Entertainment',

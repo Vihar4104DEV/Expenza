@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { convertCurrency, getExchangeRate, fetchExchangeRates } from '../utils/currency';
 
-export const useCurrency = (baseCurrency = 'USD') => {
+export const useCurrency = (baseCurrency = 'INR') => {
   const [rates, setRates] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

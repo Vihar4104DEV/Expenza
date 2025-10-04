@@ -20,7 +20,7 @@ const AddExpensePage = () => {
   
   const [formData, setFormData] = useState({
     amount: '',
-    currency: 'USD',
+    currency: 'INR',
     category: '',
     merchant: '',
     date: new Date().toISOString().split('T')[0],
@@ -309,7 +309,7 @@ const AddExpensePage = () => {
                   <Select
                     name="currency"
                     value={formData.currency}
-                    onChange={handleChange}
+                    onChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
                     options={currencies}
                     disabled={isSubmitting}
                   />
@@ -323,7 +323,12 @@ const AddExpensePage = () => {
                   <Select
                     name="category"
                     value={formData.category}
-                    onChange={handleChange}
+                    onChange={(value) => {
+                      setFormData(prev => ({ ...prev, category: value }));
+                      if (errors.category) {
+                        setErrors(prev => ({ ...prev, category: '' }));
+                      }
+                    }}
                     options={categories}
                     placeholder="Select category"
                     error={errors.category}

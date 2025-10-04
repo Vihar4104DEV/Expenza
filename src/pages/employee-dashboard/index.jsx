@@ -10,27 +10,47 @@ import ExpenseSubmissionModal from './components/ExpenseSubmissionModal';
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
-  const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
   const [currentFilter, setCurrentFilter] = useState('all');
   const [expenses, setExpenses] = useState([]);
   const [stats, setStats] = useState({});
   const [insights, setInsights] = useState({});
+  const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
 
-  // Mock user data
-  const currentUser = {
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@company.com',
-    role: 'employee',
-    avatar: null,
-    department: 'Marketing'
+  // Get employee data from localStorage
+  const getUserData = () => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return {
+        name: user.name,
+        email: user.email,
+        role: user.role?.toLowerCase() || 'employee',
+        department: user.company?.name || 'Employee',
+        avatar: user.avatar || null,
+        employee_id: user.employee_id,
+        company: user.company // Keep the full company object
+      };
+    }
+    return {
+      name: 'Employee User',
+      email: 'employee@company.com',
+      role: 'employee',
+      department: 'Employee',
+      avatar: null,
+      company: { default_currency: 'INR' }
+    };
   };
+
+  const employee = getUserData();
+
+  // Get user currency
+  const userCurrency = employee.company?.default_currency || 'INR';
 
   // Mock stats data
   const mockStats = {
-    submitted: { amount: 3245.50, count: 12 },
-    pending: { amount: 1150.75, count: 4 },
-    approved: { amount: 2094.75, count: 8 },
-    rejected: { amount: 0, count: 0 }
+    submitted: { amount: 3245.50, count: 12, currency: userCurrency },
+    pending: { amount: 1150.75, count: 4, currency: userCurrency },
+    rejected: { amount: 0, count: 0, currency: userCurrency }
   };
 
   // Mock insights data
@@ -122,7 +142,7 @@ const EmployeeDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
       <TopNavigationBar
-        user={currentUser}
+        user={employee}
         notificationCount={3}
         onLogout={handleLogout}
       />
@@ -132,7 +152,7 @@ const EmployeeDashboard = () => {
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              Welcome back, {currentUser?.name?.split(' ')?.[0]}!
+              Welcome back, {employee?.name?.split(' ')?.[0]}!
             </h1>
             <p className="text-gray-600 mt-2">
               Manage your expenses and track your spending with ease.
@@ -161,7 +181,7 @@ const EmployeeDashboard = () => {
       </main>
       {/* Mobile Bottom Navigation */}
       <MobileBottomNavigation
-        user={currentUser}
+        user={employee}
         notificationCount={3}
         onQuickAction={handleQuickAction}
       />

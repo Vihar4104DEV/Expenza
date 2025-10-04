@@ -1,21 +1,38 @@
 // Currency formatting utilities
-export const formatCurrency = (amount, currency = 'USD') => {
-  if (amount === null || amount === undefined) return '-';
-  
+export const getUserCurrency = () => {
   try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return user.company?.default_currency || 'INR';
+    }
   } catch (error) {
-    // Fallback if currency is not supported
-    return `${currency} ${parseFloat(amount).toFixed(2)}`;
+    console.error('Error getting user currency:', error);
   }
+  return 'INR';
 };
 
-// Date formatting utilities
+export const formatCurrency = (amount, currency = null) => {
+  const currencyCode = currency || getUserCurrency();
+  
+  // Use appropriate locale based on currency
+  const localeMap = {
+    'INR': 'en-IN',
+    'USD': 'en-US',
+    'EUR': 'en-GB',
+    'GBP': 'en-GB'
+  };
+  
+  const locale = localeMap[currencyCode] || 'en-US';
+  
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+};
+
 export const formatDate = (date, format = 'short') => {
   if (!date) return '-';
   

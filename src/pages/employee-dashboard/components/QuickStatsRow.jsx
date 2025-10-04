@@ -1,11 +1,11 @@
 import React from 'react';
+import { formatCurrency, getUserCurrency } from '../../../utils/formatters';
 import Icon from '../../../components/AppIcon';
 
 const QuickStatsRow = ({ stats = {} }) => {
   const defaultStats = {
     submitted: { amount: 0, count: 0 },
     pending: { amount: 0, count: 0 },
-    approved: { amount: 0, count: 0 },
     rejected: { amount: 0, count: 0 }
   };
 
@@ -49,7 +49,7 @@ const QuickStatsRow = ({ stats = {} }) => {
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR'
     })?.format(amount);
   };
 

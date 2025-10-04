@@ -11,11 +11,27 @@ const AdminReportsPage = () => {
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('thisMonth');
 
-  const currentUser = {
-    name: 'David Wilson',
-    email: 'david.wilson@company.com',
-    role: 'admin'
+  // Get current user from localStorage
+  const getUserData = () => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return {
+        name: user.name,
+        email: user.email,
+        role: user.role?.toLowerCase() || 'admin',
+        employee_id: user.employee_id,
+        company: user.company
+      };
+    }
+    return {
+      name: 'Admin User',
+      email: 'admin@company.com',
+      role: 'admin'
+    };
   };
+
+  const currentUser = getUserData();
 
   const handleLogout = () => {
     navigate('/');
@@ -50,7 +66,7 @@ const AdminReportsPage = () => {
   const stats = [
     {
       title: 'Total Company Expenses',
-      value: '$89,000',
+      value: '₹89,000',
       change: '+12.5%',
       icon: 'DollarSign',
       color: 'blue'
@@ -141,7 +157,7 @@ const AdminReportsPage = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip formatter={(value) => formatCurrency(value, 'USD')} />
+                  <Tooltip formatter={(value) => formatCurrency(value, 'INR')} />
                   <Legend />
                   <Line type="monotone" dataKey="amount" stroke="#2563EB" strokeWidth={2} name="Amount" />
                 </LineChart>
@@ -167,7 +183,7 @@ const AdminReportsPage = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value, 'USD')} />
+                  <Tooltip formatter={(value) => formatCurrency(value, 'INR')} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -181,7 +197,7 @@ const AdminReportsPage = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value, 'USD')} />
+                <Tooltip formatter={(value) => formatCurrency(value, 'INR')} />
                 <Legend />
                 <Bar dataKey="amount" fill="#2563EB" name="Amount" />
               </BarChart>
@@ -219,12 +235,12 @@ const AdminReportsPage = () => {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="font-semibold text-gray-900">
-                          {formatCurrency(dept.amount, 'USD')}
+                          {formatCurrency(dept.amount, 'INR')}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="text-gray-900">
-                          {formatCurrency(dept.amount / Math.floor(dept.count / 3), 'USD')}
+                          {formatCurrency(dept.amount / Math.floor(dept.count / 3), 'INR')}
                         </span>
                       </td>
                     </tr>

@@ -13,20 +13,43 @@ const AdminDashboard = () => {
   const [statsLoading, setStatsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Mock admin user data
-  const adminUser = {
-    name: 'David Wilson',
-    email: 'david.wilson@company.com',
-    role: 'admin',
-    department: 'Finance',
-    avatar: null
+  // Get admin user data from localStorage
+  const getUserData = () => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return {
+        name: user.name,
+        email: user.email,
+        role: user.role?.toLowerCase() || 'admin',
+        department: user.company?.name || 'Admin',
+        avatar: user.avatar || null,
+        employee_id: user.employee_id,
+        company: user.company // Keep the full company object
+      };
+    }
+    return {
+      name: 'Admin User',
+      email: 'admin@company.com',
+      role: 'admin',
+      department: 'Admin',
+      avatar: null,
+      company: { default_currency: 'INR' }
+    };
   };
+
+  const adminUser = getUserData();
+
+  // Get user currency
+  const userCurrency = adminUser.company?.default_currency || 'INR';
+  const locale = userCurrency === 'INR' ? 'en-IN' : 'en-US';
+  const currencySymbol = new Intl.NumberFormat(locale, { style: 'currency', currency: userCurrency }).formatToParts(0).find(part => part.type === 'currency')?.value || '₹';
 
   // Mock dashboard statistics
   const dashboardStats = [
     {
       title: 'Total Expenses',
-      value: '$47,892',
+      value: `${currencySymbol}47,892`,
       change: '+12.5% from last month',
       changeType: 'positive',
       icon: 'Receipt',

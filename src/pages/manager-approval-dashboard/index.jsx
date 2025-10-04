@@ -10,8 +10,10 @@ import ApprovalModal from './components/ApprovalModal';
 import TeamExpenseOverview from './components/TeamExpenseOverview';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import { useAuth } from '../../hooks/useAuth';
 
 const ManagerApprovalDashboard = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [selectedExpenses, setSelectedExpenses] = useState([]);
   const [approvalModal, setApprovalModal] = useState({ isOpen: false, expense: null, type: 'approve' });
@@ -27,12 +29,16 @@ const ManagerApprovalDashboard = () => {
 
   // Mock user data
   const currentUser = {
-    name: 'David Wilson',
-    email: 'david.wilson@company.com',
-    role: 'manager',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
-    department: 'Engineering'
+    name: user?.name,
+    email: user?.email,
+    role: user?.role,
+    avatar: user?.avatar,
+    department: user?.department
   };
+
+  
+  console.log(user);
+
 
   // Mock pending queue stats
   const queueStats = {
@@ -57,11 +63,11 @@ const ManagerApprovalDashboard = () => {
       id: 'EXP-001',
       employee: {
         name: 'Sarah Johnson',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150',
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
         department: 'Marketing'
       },
       amount: 125.50,
-      currency: 'USD',
+      currency: 'INR',
       merchant: 'Starbucks Coffee',
       date: '2025-10-03',
       category: 'Meals & Entertainment',
@@ -80,7 +86,7 @@ const ManagerApprovalDashboard = () => {
         department: 'Engineering'
       },
       amount: 89.99,
-      currency: 'USD',
+      currency: 'INR',
       merchant: 'Office Depot',
       date: '2025-10-02',
       category: 'Office Supplies',
@@ -99,7 +105,7 @@ const ManagerApprovalDashboard = () => {
         department: 'Sales'
       },
       amount: 450.00,
-      currency: 'USD',
+      currency: 'INR',
       merchant: 'Delta Airlines',
       date: '2025-10-01',
       category: 'Travel & Transportation',
@@ -118,7 +124,7 @@ const ManagerApprovalDashboard = () => {
         department: 'Marketing'
       },
       amount: 75.25,
-      currency: 'USD',
+      currency: 'INR',
       merchant: 'Uber',
       date: '2025-09-30',
       category: 'Travel & Transportation',

@@ -24,15 +24,21 @@ const SettingsPage = () => {
 
   // Get current user from localStorage
   const getUserData = () => {
-    const role = localStorage.getItem('userRole') || 'employee';
     const userData = localStorage.getItem('userData');
     if (userData) {
-      return JSON.parse(userData);
+      const user = JSON.parse(userData);
+      return {
+        name: user.name,
+        email: user.email,
+        role: user.role?.toLowerCase() || 'employee',
+        employee_id: user.employee_id,
+        company: user.company
+      };
     }
     return {
-      name: role === 'admin' ? 'Admin User' : role === 'manager' ? 'Manager User' : 'Employee User',
-      email: role === 'admin' ? 'admin@company.com' : role === 'manager' ? 'manager@company.com' : 'employee@company.com',
-      role: role
+      name: 'User',
+      email: 'user@company.com',
+      role: 'employee'
     };
   };
 

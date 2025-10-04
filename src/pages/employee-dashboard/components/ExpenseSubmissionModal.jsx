@@ -16,7 +16,7 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
     merchant: '',
     category: '',
     description: '',
-    currency: 'USD'
+    currency: 'INR'
   });
   const [errors, setErrors] = useState({});
   
@@ -33,6 +33,7 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
   ];
 
   const currencyOptions = [
+    { value: 'INR', label: ' Indian Rupee' },
     { value: 'USD', label: 'USD - US Dollar' },
     { value: 'EUR', label: 'EUR - Euro' },
     { value: 'GBP', label: 'GBP - British Pound' },
@@ -151,7 +152,7 @@ const ExpenseSubmissionModal = ({ isOpen, onClose, onSubmit }) => {
         merchant: '',
         category: '',
         description: '',
-        currency: 'USD'
+        currency: 'INR'
       });
       setUploadedFile(null);
       setOcrData(null);

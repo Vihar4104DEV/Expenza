@@ -13,7 +13,7 @@ const WorkflowModal = ({ isOpen, onClose, workflow, mode = 'create', onSave }) =
     rules: {
       minAmount: '',
       maxAmount: '',
-      currency: 'USD',
+      currency: 'INR',
       categories: []
     },
     steps: []
@@ -31,7 +31,7 @@ const WorkflowModal = ({ isOpen, onClose, workflow, mode = 'create', onSave }) =
         rules: {
           minAmount: workflow?.rules?.minAmount || '',
           maxAmount: workflow?.rules?.maxAmount || '',
-          currency: workflow?.rules?.currency || 'USD',
+          currency: workflow?.rules?.currency || 'INR',
           categories: workflow?.rules?.categories || []
         },
         steps: workflow?.steps || []
@@ -46,7 +46,7 @@ const WorkflowModal = ({ isOpen, onClose, workflow, mode = 'create', onSave }) =
         rules: {
           minAmount: '',
           maxAmount: '',
-          currency: 'USD',
+          currency: 'INR',
           categories: []
         },
         steps: []
@@ -63,7 +63,7 @@ const WorkflowModal = ({ isOpen, onClose, workflow, mode = 'create', onSave }) =
   ];
 
   const currencyOptions = [
-    { value: 'USD', label: 'US Dollar (USD)' },
+    { value: 'INR', label: 'Indian Rupees (INR)' },
     { value: 'EUR', label: 'Euro (EUR)' },
     { value: 'GBP', label: 'British Pound (GBP)' },
     { value: 'CAD', label: 'Canadian Dollar (CAD)' }

@@ -11,25 +11,42 @@ import { getInitials } from '../utils/formatters';
 const ProfilePage = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: 'Sarah Johnson',
-    email: 'sarah.johnson@company.com',
-    phone: '+1 (555) 123-4567',
-    department: 'Marketing',
-    employeeId: 'EMP-001',
-    role: 'Employee',
-    companyName: 'Acme Inc.',
-    country: 'United States',
-    currency: 'USD'
-  });
+  // Get user data from localStorage
+  const getUserData = () => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return {
+        fullName: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        department: user.company?.name || '',
+        employeeId: user.employee_id || '',
+        role: user.role,
+        companyName: user.company?.name || '',
+        country: user.company?.country || '',
+        currency: user.company?.default_currency || 'INR'
+      };
+    }
+    return {
+      fullName: 'User',
+      email: 'user@company.com',
+      phone: '',
+      department: '',
+      employeeId: '',
+      role: 'Employee',
+      companyName: '',
+      country: '',
+      currency: 'INR'
+    };
+  };
 
-  // Get current user role from localStorage
-  const userRole = localStorage.getItem('userRole') || 'employee';
-  
+  const [formData, setFormData] = useState(getUserData());
+
   const currentUser = {
     name: formData.fullName,
     email: formData.email,
-    role: userRole
+    role: formData.role?.toLowerCase() || 'employee'
   };
 
   const handleLogout = () => {

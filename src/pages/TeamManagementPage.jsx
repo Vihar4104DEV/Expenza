@@ -209,7 +209,7 @@ const TeamManagementPage = () => {
                 <Icon name="DollarSign" size={24} className="text-green-600" />
               </div>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(teamMembers.reduce((sum, m) => sum + m.totalExpenses, 0), 'USD')}
+                {formatCurrency(teamMembers.reduce((sum, m) => sum + m.totalExpenses, 0), 'INR')}
               </p>
               <p className="text-sm text-gray-600">Total Expenses</p>
             </div>
@@ -227,7 +227,7 @@ const TeamManagementPage = () => {
                 <Icon name="TrendingUp" size={24} className="text-purple-600" />
               </div>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(teamMembers.reduce((sum, m) => sum + m.totalExpenses, 0) / teamMembers.length, 'USD')}
+                {formatCurrency(teamMembers.reduce((sum, m) => sum + m.totalExpenses, 0) / teamMembers.length, 'INR')}
               </p>
               <p className="text-sm text-gray-600">Avg per Member</p>
             </div>
@@ -271,7 +271,7 @@ const TeamManagementPage = () => {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Total Expenses</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(member.totalExpenses, 'USD')}
+                      {formatCurrency(member.totalExpenses, 'INR')}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">

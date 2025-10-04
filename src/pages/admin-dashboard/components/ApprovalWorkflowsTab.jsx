@@ -18,7 +18,7 @@ const ApprovalWorkflowsTab = () => {
       isActive: true,
       rules: {
         maxAmount: 500,
-        currency: "USD",
+        currency: "INR",
         categories: ["meals", "travel", "supplies"]
       },
       steps: [
@@ -54,7 +54,7 @@ const ApprovalWorkflowsTab = () => {
       isActive: true,
       rules: {
         minAmount: 500,
-        currency: "USD",
+        currency: "INR",
         categories: ["all"]
       },
       steps: [
@@ -96,7 +96,7 @@ const ApprovalWorkflowsTab = () => {
       isActive: true,
       rules: {
         maxAmount: 2000,
-        currency: "USD",
+        currency: "INR",
         categories: ["travel", "accommodation", "meals"]
       },
       steps: [
@@ -131,7 +131,7 @@ const ApprovalWorkflowsTab = () => {
       isActive: false,
       rules: {
         maxAmount: 1000,
-        currency: "USD",
+        currency: "INR",
         categories: ["emergency", "urgent"]
       },
       steps: [

@@ -15,7 +15,7 @@ const authService = {
     const payload = {
       company_name: data.companyName,
       country: data.country,
-      default_currency: data.defaultCurrency || 'USD',
+      default_currency: data.defaultCurrency || 'INR',
       admin_name: data.fullName || data.adminName,
       admin_email: data.email,
       password: data.password,
@@ -35,20 +35,15 @@ const authService = {
       email: credentials.email,
       password: credentials.password
     });
-    
+    console.log(response.data);
     // Store auth data
     if (response.status === 1 && response.data) {
-      const { token, user } = response.data;
-      
-      if (token) {
-        localStorage.setItem('userToken', token);
-      }
-      
-      if (user) {
-        localStorage.setItem('userRole', user.role.toLowerCase());
-        localStorage.setItem('userData', JSON.stringify(user));
-      }
+      localStorage.setItem('userToken', response.data.tokens.access);
+      localStorage.setItem('userRole', response.data.role.toLowerCase());
+      localStorage.setItem('userData', JSON.stringify(response.data));
     }
+
+  
     
     return response;
   },

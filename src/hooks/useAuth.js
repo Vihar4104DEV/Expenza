@@ -42,8 +42,8 @@ export const useAuth = () => {
       const response = await authService.login(credentials);
       
       if (response.status === 1 && response.data) {
-        const userData = response.data.user;
-        const token = response.data.token;
+        const userData = response.data;
+        const token = response.data.tokens.access;
         
         setUser(userData);
         setIsAuthenticated(true);

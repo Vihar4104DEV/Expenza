@@ -43,7 +43,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         .map(country => ({
           value: country.name.common,
           label: country.name.common,
-          currency: country.currencies ? Object.keys(country.currencies)[0] : 'USD'
+          currency: country.currencies ? Object.keys(country.currencies)[0] : 'INR'
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
       
@@ -53,7 +53,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
       console.error('Error fetching countries:', error);
       // Fallback to basic list
       setCountries([
-        { value: 'United States', label: 'United States', currency: 'USD' },
+        { value: 'United States', label: 'United States', currency: 'INR' },
         { value: 'United Kingdom', label: 'United Kingdom', currency: 'GBP' },
         { value: 'India', label: 'India', currency: 'INR' },
         { value: 'Canada', label: 'Canada', currency: 'CAD' }
@@ -138,7 +138,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     
     try {
       const selectedCountry = countries.find(c => c.value === formData.country);
-      const currency = selectedCountry?.currency || 'USD';
+      const currency = selectedCountry?.currency || 'INR';
       
       const registrationData = {
         fullName: formData.fullName,
