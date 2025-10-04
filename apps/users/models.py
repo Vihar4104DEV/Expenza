@@ -55,6 +55,10 @@ class User(AbstractBaseUser, BaseModel):
     email = models.EmailField(unique=True)
     mobile_no = models.CharField(max_length=15, blank=True, null=True)
     employee_id = models.CharField(max_length=50, unique=True)
+    is_email_verified = models.BooleanField(
+        default=False,
+        help_text="Set to True when the user verifies email via OTP",
+    )
 
     # Optional org context
     department = models.CharField(
