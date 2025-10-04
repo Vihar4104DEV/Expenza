@@ -1,107 +1,106 @@
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from decimal import Decimal
-
-from .models import Expense
-
-User = get_user_model()
+from apps.expenses.models import Expense
 
 
-class ExpenseCreateSerializer(serializers.Serializer):
-    """Serializer for creating a new expense request."""
+class ExpenseSerializer(serializers.ModelSerializer):
+    """Serializer for Expense model"""
+    employee_name = serializers.CharField(source='employee.name', read_only=True)
+    employee_email = serializers.CharField(source='employee.email', read_only=True)
+    current_approver_name = serializers.CharField(source='current_approver.name', read_only=True)
+    company_name = serializers.CharField(source='company.name', read_only=True)
     
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
-    original_currency = serializers.CharField(max_length=10)
-    category = serializers.ChoiceField(choices=Expense.CATEGORY_CHOICES)
-    description = serializers.CharField()
-    expense_date = serializers.DateField()
-    receipt_image = serializers.ImageField(required=False, allow_null=True)
-    
-    def validate_amount(self, value):
-        """Validate amount is positive."""
-        if value <= 0:
-            raise serializers.ValidationError("Amount must be greater than zero.")
-        return value
-    
-    def validate_description(self, value):
-        """Validate description is not empty."""
-        if not value or value.strip() == '':
-            raise serializers.ValidationError("Description cannot be empty.")
-        return value.strip()
+    class Meta:
+        model = Expense
+        fields = [
+            'id', 'employee', 'employee_name', 'employee_email', 'company', 'company_name',
+            'amount', 'original_currency', 'converted_amount', 'category', 'description',
+            'expense_date', 'status', 'current_approver', 'current_approver_name',
+            'current_step', 'receipt_image', 'ocr_extracted_text', 'ocr_merchant_name',
+            'ocr_extracted_amount', 'ocr_extracted_date', 'created_at', 'updated_at', 'is_active'
+        ]
+        read_only_fields = [
+            'id', 'converted_amount', 'current_approver', 'current_step',
+            'created_at', 'updated_at'
+        ]
 
 
-class ExpenseUpdateSerializer(serializers.Serializer):
-    """Serializer for updating an expense request (only if status is Pending)."""
+class ExpenseCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating Expense"""
     
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'), required=False)
-    original_currency = serializers.CharField(max_length=10, required=False)
-    category = serializers.ChoiceField(choices=Expense.CATEGORY_CHOICES, required=False)
-    description = serializers.CharField(required=False)
-    expense_date = serializers.DateField(required=False)
-    receipt_image = serializers.ImageField(required=False, allow_null=True)
+    class Meta:
+        model = Expense
+        fields = [
+            'amount', 'original_currency', 'category',
+            'description', 'expense_date', 'receipt_image'
+        ]
     
     def validate_amount(self, value):
-        """Validate amount is positive."""
         if value <= 0:
-            raise serializers.ValidationError("Amount must be greater than zero.")
+            raise serializers.ValidationError("Amount must be greater than 0")
         return value
-    
-    def validate_description(self, value):
-        """Validate description is not empty."""
-        if value is not None and value.strip() == '':
-            raise serializers.ValidationError("Description cannot be empty.")
-        return value.strip() if value else value
 
 
-class ExpenseListSerializer(serializers.Serializer):
-    """Lightweight serializer for expense listing."""
+class ExpenseUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating Expense"""
     
-    id = serializers.UUIDField()
-    employee_name = serializers.CharField()
-    employee_email = serializers.CharField()
-    employee_id = serializers.CharField()
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    original_currency = serializers.CharField()
-    category = serializers.CharField()
-    expense_date = serializers.DateField()
-    status = serializers.CharField()
-    current_approver_name = serializers.CharField(allow_null=True)
-    current_step = serializers.IntegerField()
-    created_at = serializers.DateTimeField()
+    class Meta:
+        model = Expense
+        fields = [
+            'amount', 'original_currency', 'category', 'description',
+            'expense_date', 'receipt_image'
+        ]
     
-
-class ApprovalHistorySerializer(serializers.Serializer):
-    """Serializer for approval history tracking."""
-    
-    step_number = serializers.IntegerField()
-    approver_name = serializers.CharField()
-    approver_email = serializers.CharField()
-    decision = serializers.CharField()
-    comments = serializers.CharField(allow_null=True)
-    decided_at = serializers.DateTimeField(allow_null=True)
-    created_at = serializers.DateTimeField()
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than 0")
+        return value
 
 
-class ExpenseDetailSerializer(serializers.Serializer):
-    """Detailed serializer for a single expense with full tracking information."""
+class ExpenseApprovalSerializer(serializers.ModelSerializer):
+    """Serializer for expense approval actions"""
+    employee_name = serializers.CharField(source='employee.name', read_only=True)
+    amount_display = serializers.SerializerMethodField()
     
-    id = serializers.UUIDField()
-    employee = serializers.DictField()
-    company = serializers.DictField()
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    original_currency = serializers.CharField()
-    converted_amount = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
-    category = serializers.CharField()
-    description = serializers.CharField()
-    expense_date = serializers.DateField()
-    status = serializers.CharField()
-    current_approver = serializers.DictField(allow_null=True)
-    current_step = serializers.IntegerField()
-    receipt_image = serializers.CharField(allow_null=True)
-    ocr_extracted_text = serializers.CharField(allow_null=True)
-    ocr_merchant_name = serializers.CharField(allow_null=True)
-    ocr_extracted_amount = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
-    ocr_extracted_date = serializers.DateField(allow_null=True)
-    approval_history = ApprovalHistorySerializer(many=True)
-    created_at = serializers.DateTimeField()
-    updated_at = serializers.DateTimeField()
+    class Meta:
+        model = Expense
+        fields = [
+            'id', 'employee_name', 'amount', 'original_currency', 'converted_amount',
+            'amount_display', 'category', 'description', 'expense_date', 'status',
+            'current_step', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+    
+    def get_amount_display(self, obj):
+        if obj.converted_amount:
+            return f"{obj.converted_amount} {obj.company.default_currency}"
+        return f"{obj.amount} {obj.original_currency}"
+
+
+class ExpenseListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for expense lists"""
+    employee_name = serializers.CharField(source='employee.name', read_only=True)
+    amount_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Expense
+        fields = [
+            'id', 'employee_name', 'amount', 'original_currency', 'converted_amount',
+            'amount_display', 'category', 'expense_date', 'status', 'created_at'
+        ]
+    
+    def get_amount_display(self, obj):
+        if obj.converted_amount:
+            return f"{obj.converted_amount} {obj.company.default_currency}"
+        return f"{obj.amount} {obj.original_currency}"
+
+
+class OCRReceiptSerializer(serializers.Serializer):
+    """Serializer for OCR receipt processing"""
+    receipt_image = serializers.ImageField(required=True)
+    
+    def validate_receipt_image(self, value):
+        # Add image validation if needed
+        if value.size > 10 * 1024 * 1024:  # 10MB limit
+            raise serializers.ValidationError("Image size should not exceed 10MB")
+        return value

@@ -51,7 +51,10 @@ def verify_otp(email: str, purpose: str, code: str) -> bool:
 
 def issue_tokens_for_user(user) -> dict:
     """Issue JWT access and refresh tokens for a user."""
+    print("before generating tokens")
     refresh = RefreshToken.for_user(user)
+    print("refresh",refresh)
+    print("after generating tokens")
     return {
         "access": str(refresh.access_token),
         "refresh": str(refresh),

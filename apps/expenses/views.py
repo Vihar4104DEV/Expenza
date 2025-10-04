@@ -1,358 +1,320 @@
-from django.contrib.auth import get_user_model
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from rest_framework import serializers
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db.models import Q
 
+from apps.approvals.models import ExpenseApproval
 from apps.core.utils.response_wrapper import api_response
-from apps.core.utils.exceptions import extract_first_error_message
-from .services import (
-    create_expense,
-    update_expense,
-    delete_expense,
-    list_expenses,
-    get_expense_by_id,
-    build_expense_detail_payload,
+from apps.expenses.models import Expense
+from apps.users.services import (
+    get_user_subordinates,
+    get_user_team_expenses,
+    get_user_pending_approvals,
+    get_approvers_for_company,
+    update_user_role
 )
-from .serializers import (
-    ExpenseCreateSerializer,
-    ExpenseUpdateSerializer,
+from apps.users.models import User
+from apps.expenses.serializers import (
+    ExpenseSerializer, ExpenseCreateSerializer, ExpenseUpdateSerializer,
+    ExpenseApprovalSerializer, ExpenseListSerializer, OCRReceiptSerializer
 )
+from apps.expenses.services import ExpenseService, CurrencyService
 
-User = get_user_model()
 
-
-class ExpenseListCreateView(APIView):
-    """List expenses or create a new expense request."""
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        """
-        List expenses with role-based filtering and pagination.
+class ExpenseViewSet(viewsets.ModelViewSet):
+    """ViewSet for Expense model"""
+    queryset = Expense.objects.all()
+    serializer_class = ExpenseSerializer
+    permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'category', 'original_currency', 'is_active']
+    search_fields = ['description', 'employee__name', 'employee__email']
+    ordering_fields = ['amount', 'expense_date', 'created_at', 'updated_at']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ExpenseCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return ExpenseUpdateSerializer
+        elif self.action == 'list':
+            return ExpenseListSerializer
+        return ExpenseSerializer
+    
+    def get_queryset(self):
+        """Filter expenses based on user permissions"""
+        if not self.request.user.is_authenticated:
+            return Expense.objects.none()
         
-        Role-based access:
-        - Admin: See all expenses in the company
-        - Manager: See expenses from subordinates
-        - Employee: See only their own expenses
+        # Admin can see all expenses in their company
+        if self.request.user.role == 'Admin':
+            return Expense.objects.filter(company=self.request.user.company)
         
-        Query parameters:
-        - page: Page number (default: 1)
-        - page_size: Items per page (default: 10)
-        - status: Filter by status (Pending, In-Progress, Approved, Rejected)
-        - category: Filter by category
-        - search: Search across employee name, email, description
-        - date_from: Filter expenses from this date (YYYY-MM-DD)
-        - date_to: Filter expenses up to this date (YYYY-MM-DD)
-        - employee_id: Filter by employee ID
-        """
-        try:
-            # Get query parameters
-            page = int(request.query_params.get('page', 1))
-            page_size = int(request.query_params.get('page_size', 10))
-            status_filter = request.query_params.get('status', None)
-            category = request.query_params.get('category', None)
-            search = request.query_params.get('search', None)
-            date_from = request.query_params.get('date_from', None)
-            date_to = request.query_params.get('date_to', None)
-            employee_id = request.query_params.get('employee_id', None)
+        # Manager can see their subordinates' expenses
+        elif self.request.user.role == 'Manager':
+            subordinates = get_user_subordinates(self.request.user)
+            return Expense.objects.filter(
+                Q(employee__in=subordinates) | Q(current_approver=self.request.user)
+            )
+        
+        # Employee can only see their own expenses
+        else:
+            return Expense.objects.filter(employee=self.request.user)
+    
+    # def perform_create(self, serializer):
+    #     """Create expense with proper company and employee assignment"""
+    #     serializer.save(
+    #         employee=self.request.user,
+    #         company=self.request.user.company
+    #     )
+    
+    def perform_create(self, serializer):
+        """Create expense with proper company, employee assignment, and approver"""
+        user = self.request.user
+        
+        # Determine the first approver based on user's configuration
+        current_approver = None
+        current_step = 0
+        
+        if user.is_manager_approver and user.manager:
+            # If user has manager approval enabled and has a manager, assign them
+            current_approver = user.manager
+        else:
+            # Otherwise, find a Manager role in the company
+            # You might want to add additional logic here to determine which manager
+            manager = User.objects.filter(
+                company=user.company,
+                role='Manager',
+                is_active=True
+            ).first()
             
-            # Get filtered and paginated expenses
-            result = list_expenses(
-                user=request.user,
-                page=page,
-                page_size=page_size,
-                status=status_filter,
-                category=category,
-                search=search,
-                date_from=date_from,
-                date_to=date_to,
-                employee_id=employee_id,
+            if manager:
+                current_approver = manager
+        
+        # Save the expense with all required fields
+        expense = serializer.save(
+            employee=user,
+            company=user.company,
+            status='Pending',
+            current_approver=current_approver,
+            current_step=current_step
+        )
+
+        # Create initial ExpenseApproval record
+        ExpenseApproval.objects.create(
+            expense=expense,
+            approver=current_approver,
+            step_number=current_step,
+            decision='Pending'
+        )
+
+    @action(detail=False, methods=['get'])
+    def my_expenses(self, request):
+        """Get current user's expenses"""
+        try:
+            expenses = Expense.objects.filter(employee=request.user)
+            status_filter = request.query_params.get('status')
+            
+            if status_filter:
+                expenses = expenses.filter(status=status_filter)
+            
+            serializer = ExpenseListSerializer(expenses, many=True)
+            return api_response(data=serializer.data, message="Expenses retrieved successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=False, methods=['get'])
+    def pending_approval(self, request):
+        """Get expenses pending approval by current user"""
+        try:
+            if request.user.role not in ['Admin', 'Manager']:
+                return api_response(
+                    message="Only Admin and Manager can view pending approvals",
+                    status_code=403
+                )
+            
+            pending_expenses = Expense.objects.filter(
+                current_approver=request.user,
+                status__in=['In-Progress', "Pending"]
             )
             
-            return api_response(data=result, message="Expenses retrieved successfully")
-        except ValueError as e:
+            serializer = ExpenseApprovalSerializer(pending_expenses, many=True)
+            return api_response(data=serializer.data, message="Pending approvals retrieved successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Approve or reject an expense"""
+        try:
+            expense = self.get_object()
+            decision = request.data.get('decision')
+            comments = request.data.get('comments', '')
+            
+            if decision not in ['Approved', 'Rejected']:
+                return api_response(
+                    message='Decision must be either "Approved" or "Rejected"',
+                    status_code=400
+                )
+            
+            if expense.current_approver != request.user:
+                return api_response(
+                    message='You are not authorized to approve this expense',
+                    status_code=403
+                )
+            
+            ExpenseService.process_approval(expense, request.user, decision, comments)
+            print("after expense service process approval")
+            # Return updated expense
+            serializer = ExpenseSerializer(expense)
+            return api_response(data=serializer.data, message="Expense approval processed successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=True, methods=['post'])
+    def escalate(self, request, pk=None):
+        """Escalate an expense to a higher authority"""
+        try:
+            expense = self.get_object()
+            escalated_to_id = request.data.get('escalated_to')
+            reason = request.data.get('reason', '')
+            
+            if not escalated_to_id:
+                return api_response(
+                    message='escalated_to is required',
+                    status_code=400
+                )
+            
+            escalated_to = User.objects.get(
+                id=escalated_to_id,
+                company=expense.company,
+                role__in=['Admin', 'Manager']
+            )
+            
+            ExpenseService.escalate_expense(expense, escalated_to)
+            
+            serializer = ExpenseSerializer(expense)
+            return api_response(data=serializer.data, message="Expense escalated successfully")
+        except User.DoesNotExist:
             return api_response(
-                message="Invalid pagination parameters",
-                status_code=status.HTTP_400_BAD_REQUEST,
-                success=False
+                message='Escalation target not found',
+                status_code=400
             )
         except Exception as e:
-            print(f"Error retrieving expenses: {str(e)}")
-            return api_response(
-                message=str(e) if str(e) else "Failed to retrieve expenses",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                success=False
-            )
-
-    def post(self, request):
-        """
-        Create a new expense request.
-        
-        Only employees can create expense requests.
-        Automatically sets the employee to the current user.
-        """
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=True, methods=['get'])
+    def approval_history(self, request, pk=None):
+        """Get approval history for an expense"""
         try:
-            # Validate user role (only employees should create expenses)
-            # However, for flexibility, we'll allow all roles to create
-            # You can uncomment below if you want to restrict to employees only
-            # if request.user.role not in ['Employee', 'Manager']:
-            #     return api_response(
-            #         message="Only employees can create expense requests",
-            #         status_code=status.HTTP_403_FORBIDDEN,
-            #         success=False
-            #     )
+            expense = self.get_object()
             
-            serializer = ExpenseCreateSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            payload = serializer.validated_data
+            # Check if user has permission to view this expense
+            if (request.user.role == 'Employee' and expense.employee != request.user) or \
+               (request.user.role == 'Manager' and expense.employee.manager != request.user):
+                return api_response(
+                    message='You are not authorized to view this expense',
+                    status_code=403
+                )
             
-            # Create expense
-            expense = create_expense(
-                employee=request.user,
-                company=request.user.company,
-                amount=payload['amount'],
-                original_currency=payload['original_currency'],
-                category=payload['category'],
-                description=payload['description'],
-                expense_date=payload['expense_date'],
-                receipt_image=payload.get('receipt_image'),
-            )
+            history = ExpenseService.get_expense_approval_history(expense)
             
-            # Return detailed expense information
-            expense_data = build_expense_detail_payload(expense)
-            return api_response(
-                data=expense_data,
-                message="Expense request created successfully",
-                status_code=status.HTTP_201_CREATED
-            )
-        except serializers.ValidationError as e:
-            error_message = extract_first_error_message(e.detail)
-            return api_response(
-                data=None,
-                message=error_message,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                success=False
-            )
+            from apps.approvals.serializers import ExpenseApprovalSerializer
+            serializer = ExpenseApprovalSerializer(history, many=True)
+            return api_response(data=serializer.data, message="Approval history retrieved successfully")
         except Exception as e:
-            if hasattr(e, 'detail'):
-                error_message = extract_first_error_message(e.detail)
-                return api_response(
-                    data=None,
-                    message=error_message,
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    success=False
-                )
-            print(f"Error creating expense: {str(e)}")
-            return api_response(
-                message=str(e) if str(e) else "Failed to create expense request",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                success=False
-            )
-
-
-class ExpenseDetailView(APIView):
-    """Get, update, or delete a specific expense request."""
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, expense_id):
-        """
-        Get detailed information for a specific expense with approval tracking.
-        
-        Access control:
-        - Admin: Can view all expenses in their company
-        - Manager: Can view expenses from subordinates
-        - Employee: Can only view their own expenses
-        """
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=False, methods=['get'])
+    def by_status(self, request):
+        """Get expenses by status"""
         try:
-            expense = get_expense_by_id(expense_id, request.user)
-            
-            if not expense:
+            status_filter = request.query_params.get('status')
+            if not status_filter:
                 return api_response(
-                    message="Expense not found or you don't have permission to view it",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    success=False
+                    message='status parameter is required',
+                    status_code=400
                 )
             
-            # Return detailed expense information with approval history
-            expense_data = build_expense_detail_payload(expense)
-            return api_response(data=expense_data, message="Expense details retrieved successfully")
+            expenses = ExpenseService.get_expenses_by_status(
+                request.user.company, status_filter
+            )
+            
+            # Apply user permission filtering
+            if request.user.role == 'Manager':
+                subordinates = get_user_subordinates(request.user)
+                expenses = expenses.filter(employee__in=subordinates)
+            elif request.user.role == 'Employee':
+                expenses = expenses.filter(employee=request.user)
+            
+            serializer = ExpenseListSerializer(expenses, many=True)
+            return api_response(data=serializer.data, message="Expenses retrieved successfully")
         except Exception as e:
-            print(f"Error retrieving expense details: {str(e)}")
-            return api_response(
-                message=str(e) if str(e) else "Failed to retrieve expense details",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                success=False
-            )
-
-    def patch(self, request, expense_id):
-        """
-        Update an expense request.
-        
-        Rules:
-        - Only the expense owner can update their expense
-        - Only expenses with status 'Pending' can be updated
-        """
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=False, methods=['post'])
+    def process_receipt(self, request):
+        """Process receipt using OCR"""
         try:
-            expense = get_expense_by_id(expense_id, request.user)
+            serializer = OCRReceiptSerializer(data=request.data)
             
-            if not expense:
-                return api_response(
-                    message="Expense not found or you don't have permission to access it",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    success=False
-                )
-            
-            # Only expense owner can update
-            if expense.employee != request.user:
-                return api_response(
-                    message="You can only update your own expense requests",
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    success=False
-                )
-            
-            # Only pending expenses can be updated
-            if expense.status != 'Pending':
-                return api_response(
-                    message=f"Cannot update expense with status '{expense.status}'. Only 'Pending' expenses can be updated.",
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    success=False
-                )
-            
-            serializer = ExpenseUpdateSerializer(data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            data = serializer.validated_data
-            
-            # Update expense
-            updated_expense = update_expense(expense, **data)
-            
-            # Return updated expense details
-            expense_data = build_expense_detail_payload(updated_expense)
-            return api_response(data=expense_data, message="Expense updated successfully")
-        except serializers.ValidationError as e:
-            error_message = extract_first_error_message(e.detail)
-            return api_response(
-                data=None,
-                message=error_message,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                success=False
-            )
-        except ValueError as e:
-            return api_response(
-                message=str(e),
-                status_code=status.HTTP_400_BAD_REQUEST,
-                success=False
-            )
-        except Exception as e:
-            if hasattr(e, 'detail'):
-                error_message = extract_first_error_message(e.detail)
-                return api_response(
-                    data=None,
-                    message=error_message,
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    success=False
-                )
-            print(f"Error updating expense: {str(e)}")
-            return api_response(
-                message=str(e) if str(e) else "Failed to update expense",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                success=False
-            )
-
-    def delete(self, request, expense_id):
-        """
-        Delete an expense request (soft delete).
-        
-        Rules:
-        - Only the expense owner can delete their expense
-        - Only expenses with status 'Pending' can be deleted
-        """
-        try:
-            expense = get_expense_by_id(expense_id, request.user)
-            
-            if not expense:
-                return api_response(
-                    message="Expense not found or you don't have permission to access it",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    success=False
-                )
-            
-            # Only expense owner can delete
-            if expense.employee != request.user:
-                return api_response(
-                    message="You can only delete your own expense requests",
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    success=False
-                )
-            
-            # Only pending expenses can be deleted
-            if expense.status != 'Pending':
-                return api_response(
-                    message=f"Cannot delete expense with status '{expense.status}'. Only 'Pending' expenses can be deleted.",
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    success=False
-                )
-            
-            # Delete expense
-            delete_expense(expense)
-            
-            return api_response(message="Expense deleted successfully", status_code=status.HTTP_200_OK)
-        except ValueError as e:
-            return api_response(
-                message=str(e),
-                status_code=status.HTTP_400_BAD_REQUEST,
-                success=False
-            )
-        except Exception as e:
-            print(f"Error deleting expense: {str(e)}")
-            return api_response(
-                message=str(e) if str(e) else "Failed to delete expense",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                success=False
-            )
-
-
-class ExpenseTrackView(APIView):
-    """Track expense approval status and history."""
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, expense_id):
-        """
-        Track an expense request with complete approval history.
-        
-        This is an alias to the detail view but emphasizes tracking functionality.
-        Returns full expense details including approval steps and current status.
-        """
-        try:
-            expense = get_expense_by_id(expense_id, request.user)
-            
-            if not expense:
-                return api_response(
-                    message="Expense not found or you don't have permission to track it",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    success=False
-                )
-            
-            # Return detailed expense information with full approval tracking
-            expense_data = build_expense_detail_payload(expense)
-            
-            # Add additional tracking metadata
-            tracking_info = {
-                "expense": expense_data,
-                "tracking_summary": {
-                    "total_approval_steps": len(expense_data['approval_history']),
-                    "current_status": expense_data['status'],
-                    "current_step": expense_data['current_step'],
-                    "awaiting_approval_from": expense_data['current_approver']['name'] if expense_data['current_approver'] else None,
-                    "can_edit": expense.employee == request.user and expense.status == 'Pending',
-                    "can_delete": expense.employee == request.user and expense.status == 'Pending',
+            if serializer.is_valid():
+                # Here you would integrate with your OCR service
+                # For now, return mock data
+                receipt_data = {
+                    'amount': 25.50,
+                    'date': '2024-01-15',
+                    'merchant': 'Sample Restaurant',
+                    'description': 'Business lunch meeting'
                 }
-            }
+                
+                return api_response(data=receipt_data, message="Receipt processed successfully")
             
-            return api_response(data=tracking_info, message="Expense tracking information retrieved successfully")
+            return api_response(message="Validation Error", error=serializer.errors, status_code=400)
         except Exception as e:
-            print(f"Error tracking expense: {str(e)}")
-            return api_response(
-                message=str(e) if str(e) else "Failed to retrieve expense tracking information",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                success=False
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=False, methods=['get'])
+    def currencies(self, request):
+        """Get list of supported currencies"""
+        try:
+            currencies = CurrencyService.get_currency_list()
+            return api_response(data=currencies, message="Currencies retrieved successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
+    
+    @action(detail=False, methods=['post'])
+    def convert_currency(self, request):
+        """Convert currency"""
+        try:
+            amount = request.data.get('amount')
+            from_currency = request.data.get('from_currency')
+            to_currency = request.data.get('to_currency')
+            
+            if not all([amount, from_currency, to_currency]):
+                return api_response(
+                    message='amount, from_currency, and to_currency are required',
+                    status_code=400
+                )
+            
+            converted_amount = CurrencyService.convert_currency(
+                amount, from_currency, to_currency
             )
+            
+            if converted_amount is None:
+                return api_response(
+                    message='Currency conversion failed',
+                    status_code=400
+                )
+            
+            return api_response(data={
+                'original_amount': amount,
+                'from_currency': from_currency,
+                'converted_amount': converted_amount,
+                'to_currency': to_currency
+            }, message="Currency converted successfully")
+        except Exception as e:
+            return api_response(message="An unexpected error occurred", error=str(e), status_code=500)
