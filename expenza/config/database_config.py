@@ -2,13 +2,6 @@
 
 import os
 import dj_database_url
-print(os.environ.get("DB_NAME"))
-print(os.environ.get("DB_USER"))
-print(os.environ.get("DB_PWD"))
-print(os.environ.get("DB_HOST"))
-print(os.environ.get("DB_PORT"))
-print(os.environ.get("DB_SSL_MODE"))
-print(os.environ.get("DB_CHANNEL_BINDING"))
 
 DATABASES = {
     "default": dj_database_url.config(
