@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import expenseService from '../services/expenseService';
 
 export const useExpenses = (filters = {}) => {
   const [expenses, setExpenses] = useState([]);
@@ -7,7 +8,8 @@ export const useExpenses = (filters = {}) => {
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 10,
-    total: 0
+    total: 0,
+    totalPages: 0
   });
 
   useEffect(() => {
@@ -19,58 +21,120 @@ export const useExpenses = (filters = {}) => {
       setLoading(true);
       setError(null);
       
-      // In a real app, this would be an API call
-      // For now, return mock data
-      const mockExpenses = generateMockExpenses();
+      const params = {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        status: filters.status,
+        category: filters.category,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        employeeId: filters.employeeId,
+        search: filters.search
+      };
       
-      // Apply filters
-      let filtered = mockExpenses;
+      const response = await expenseService.getExpenses(params);
       
-      if (filters.status) {
-        filtered = filtered.filter(exp => exp.status === filters.status);
+      if (response.status === 1 && response.data) {
+        setExpenses(response.data.expenses || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination?.total_count || 0,
+          totalPages: response.data.pagination?.total_pages || 0
+        }));
+      } else {
+        setExpenses([]);
+        setError(response.message || 'Failed to fetch expenses');
       }
-      
-      if (filters.category) {
-        filtered = filtered.filter(exp => exp.category === filters.category);
-      }
-      
-      if (filters.dateFrom) {
-        filtered = filtered.filter(exp => new Date(exp.date) >= new Date(filters.dateFrom));
-      }
-      
-      if (filters.dateTo) {
-        filtered = filtered.filter(exp => new Date(exp.date) <= new Date(filters.dateTo));
-      }
-      
-      setExpenses(filtered);
-      setPagination(prev => ({ ...prev, total: filtered.length }));
     } catch (err) {
-      setError(err.message);
+      console.error('Fetch expenses error:', err);
+      setError(err.message || 'An error occurred while fetching expenses');
+      setExpenses([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const addExpense = useCallback((expenseData) => {
-    const newExpense = {
-      id: `EXP-${Date.now()}`,
-      ...expenseData,
-      status: 'pending',
-      submittedAt: new Date().toISOString()
-    };
-    
-    setExpenses(prev => [newExpense, ...prev]);
-    return newExpense;
+  const addExpense = useCallback(async (expenseData) => {
+    try {
+      const response = await expenseService.createExpense(expenseData);
+      
+      if (response.status === 1 && response.data) {
+        // Refresh expenses list
+        await fetchExpenses();
+        return { success: true, data: response.data, message: response.message };
+      }
+      
+      return { success: false, message: response.message || 'Failed to create expense' };
+    } catch (err) {
+      console.error('Add expense error:', err);
+      return { success: false, message: err.message || 'An error occurred while creating expense' };
+    }
   }, []);
 
-  const updateExpense = useCallback((id, updates) => {
-    setExpenses(prev => 
-      prev.map(exp => exp.id === id ? { ...exp, ...updates } : exp)
-    );
+  const updateExpense = useCallback(async (id, updates) => {
+    try {
+      const response = await expenseService.updateExpense(id, updates);
+      
+      if (response.status === 1) {
+        // Update local state
+        setExpenses(prev => 
+          prev.map(exp => exp.id === id ? { ...exp, ...response.data } : exp)
+        );
+        return { success: true, data: response.data, message: response.message };
+      }
+      
+      return { success: false, message: response.message || 'Failed to update expense' };
+    } catch (err) {
+      console.error('Update expense error:', err);
+      return { success: false, message: err.message || 'An error occurred while updating expense' };
+    }
   }, []);
 
-  const deleteExpense = useCallback((id) => {
-    setExpenses(prev => prev.filter(exp => exp.id !== id));
+  const deleteExpense = useCallback(async (id) => {
+    try {
+      const response = await expenseService.deleteExpense(id);
+      
+      if (response.status === 1) {
+        // Remove from local state
+        setExpenses(prev => prev.filter(exp => exp.id !== id));
+        return { success: true, message: response.message };
+      }
+      
+      return { success: false, message: response.message || 'Failed to delete expense' };
+    } catch (err) {
+      console.error('Delete expense error:', err);
+      return { success: false, message: err.message || 'An error occurred while deleting expense' };
+    }
+  }, []);
+
+  const getExpenseById = useCallback(async (id) => {
+    try {
+      const response = await expenseService.getExpenseById(id);
+      
+      if (response.status === 1 && response.data) {
+        return { success: true, data: response.data };
+      }
+      
+      return { success: false, message: response.message || 'Failed to fetch expense details' };
+    } catch (err) {
+      console.error('Get expense by ID error:', err);
+      return { success: false, message: err.message || 'An error occurred while fetching expense' };
+    }
+  }, []);
+
+  const trackExpense = useCallback(async (id) => {
+    try {
+      const response = await expenseService.trackExpense(id);
+      
+      if (response.status === 1 && response.data) {
+        return { success: true, data: response.data };
+      }
+      
+      return { success: false, message: response.message || 'Failed to track expense' };
+    } catch (err) {
+      console.error('Track expense error:', err);
+      return { success: false, message: err.message || 'An error occurred while tracking expense' };
+    }
   }, []);
 
   const refresh = useCallback(() => {
@@ -85,47 +149,10 @@ export const useExpenses = (filters = {}) => {
     addExpense,
     updateExpense,
     deleteExpense,
+    getExpenseById,
+    trackExpense,
     refresh,
-    setPage: (page) => setPagination(prev => ({ ...prev, page }))
+    setPage: (page) => setPagination(prev => ({ ...prev, page })),
+    setPageSize: (pageSize) => setPagination(prev => ({ ...prev, pageSize, page: 1 }))
   };
-};
-
-// Mock data generator
-const generateMockExpenses = () => {
-  return [
-    {
-      id: 'EXP-001',
-      amount: 125.50,
-      currency: 'USD',
-      category: 'Meals & Entertainment',
-      description: 'Client meeting lunch',
-      date: '2025-10-01',
-      status: 'pending',
-      merchant: 'Restaurant ABC',
-      submittedAt: '2025-10-01T10:00:00Z'
-    },
-    {
-      id: 'EXP-002',
-      amount: 450.00,
-      currency: 'USD',
-      category: 'Travel & Transportation',
-      description: 'Flight to conference',
-      date: '2025-09-28',
-      status: 'approved',
-      merchant: 'Delta Airlines',
-      submittedAt: '2025-09-28T08:00:00Z'
-    },
-    {
-      id: 'EXP-003',
-      amount: 89.99,
-      currency: 'USD',
-      category: 'Office Supplies',
-      description: 'Wireless keyboard and mouse',
-      date: '2025-09-25',
-      status: 'rejected',
-      merchant: 'Office Depot',
-      submittedAt: '2025-09-25T14:30:00Z',
-      rejectionReason: 'Not pre-approved'
-    }
-  ];
 };

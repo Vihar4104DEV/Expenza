@@ -5,9 +5,11 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { Checkbox } from '../../components/ui/Checkbox';
+import { useAuth } from '../../hooks/useAuth';
 
 const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -15,6 +17,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -51,37 +54,27 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setApiError('');
     
-    // Simulate API call
-    setTimeout(() => {
-      // Mock authentication - in real app, validate against backend
-      localStorage.setItem('userToken', 'mock-token-' + Date.now());
+    try {
+      const result = await login({
+        email: formData.email,
+        password: formData.password
+      });
       
-      // Determine role based on email (mock logic)
-      let role = 'employee';
-      if (formData.email.includes('admin')) {
-        role = 'admin';
-      } else if (formData.email.includes('manager')) {
-        role = 'manager';
+      if (result.success) {
+        // Login successful - navigation handled by useAuth hook
+        onClose();
+      } else {
+        // Show error message
+        setApiError(result.message || 'Invalid email or password');
       }
-      
-      localStorage.setItem('userRole', role);
-      
+    } catch (error) {
+      console.error('Login error:', error);
+      setApiError('An error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-      onClose();
-      
-      // Navigate based on role
-      switch (role) {
-        case 'admin':
-          navigate('/admin-dashboard');
-          break;
-        case 'manager':
-          navigate('/manager-approval-dashboard');
-          break;
-        default:
-          navigate('/employee-dashboard');
-      }
-    }, 1500);
+    }
   };
 
   if (!isOpen) return null;
@@ -128,6 +121,14 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* API Error Message */}
+              {apiError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
+                  <Icon name="AlertCircle" size={18} className="text-red-600 mt-0.5" />
+                  <p className="text-sm text-red-800">{apiError}</p>
+                </div>
+              )}
+
               {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">

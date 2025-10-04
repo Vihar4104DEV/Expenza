@@ -5,9 +5,11 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
+import { useAuth } from '../../hooks/useAuth';
 
 const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -22,6 +24,8 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [apiError, setApiError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Fetch countries on mount
   useEffect(() => {
@@ -129,33 +133,47 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setApiError('');
+    setSuccessMessage('');
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
       const selectedCountry = countries.find(c => c.value === formData.country);
       const currency = selectedCountry?.currency || 'USD';
       
-      // Mock user creation (don't save to localStorage yet - wait for OTP verification)
-      const userData = {
+      const registrationData = {
         fullName: formData.fullName,
         email: formData.email,
+        password: formData.password,
         companyName: formData.companyName,
         country: formData.country,
-        currency: currency,
-        mobileNumber: formData.mobileNumber,
-        role: 'employee', // Default role for new signups
-        createdAt: new Date().toISOString()
+        defaultCurrency: currency,
+        mobileNumber: formData.mobileNumber
       };
       
-      // Store temporarily for OTP verification
-      sessionStorage.setItem('pendingUserData', JSON.stringify(userData));
+      const result = await register(registrationData);
       
+      if (result.success) {
+        // Show success message
+        setSuccessMessage(result.message || 'Registration successful! Please check your email for OTP verification.');
+        
+        // Store email for OTP verification
+        sessionStorage.setItem('pendingVerificationEmail', formData.email);
+        
+        // Close modal after delay and redirect to login
+        setTimeout(() => {
+          onClose();
+          onSwitchToLogin(); // Switch to login modal where user can verify OTP
+        }, 2000);
+      } else {
+        // Show error message
+        setApiError(result.message || 'Registration failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setApiError(error.message || 'An error occurred during registration. Please try again.');
+    } finally {
       setIsLoading(false);
-      onClose();
-      
-      // Navigate to OTP verification page
-      navigate('/verify-otp', { state: { email: formData.email } });
-    }, 2000);
+    }
   };
 
   const getPasswordStrengthColor = () => {
@@ -214,6 +232,22 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* API Error Message */}
+              {apiError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
+                  <Icon name="AlertCircle" size={18} className="text-red-600 mt-0.5" />
+                  <p className="text-sm text-red-800">{apiError}</p>
+                </div>
+              )}
+
+              {/* Success Message */}
+              {successMessage && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-start space-x-2">
+                  <Icon name="CheckCircle" size={18} className="text-green-600 mt-0.5" />
+                  <p className="text-sm text-green-800">{successMessage}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Full Name */}
                 <div>
