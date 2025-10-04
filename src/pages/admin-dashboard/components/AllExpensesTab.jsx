@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import { useToastContext } from '../../../components/shared/ToastProvider';
 
 const AllExpensesTab = () => {
+  const navigate = useNavigate();
+  const toast = useToastContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -225,6 +229,15 @@ const AllExpensesTab = () => {
 
   const handleAdminOverride = (expenseId, action) => {
     console.log(`Admin override ${action} for expense:`, expenseId);
+    if (action === 'approve') {
+      toast.success(`Expense ${expenseId} approved successfully`);
+    } else {
+      toast.success(`Expense ${expenseId} rejected successfully`);
+    }
+  };
+
+  const handleViewExpense = (expenseId) => {
+    navigate(`/expense/${expenseId}`);
   };
 
   const handleExport = () => {
@@ -398,7 +411,8 @@ const AllExpensesTab = () => {
                         variant="ghost"
                         size="sm"
                         iconName="Eye"
-                        onClick={() => console.log('View expense:', expense?.id)}
+                        onClick={() => handleViewExpense(expense?.id)}
+                        title="View expense details"
                       />
                       {expense?.status === 'pending' && (
                         <>

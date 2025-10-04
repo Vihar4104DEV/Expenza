@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import { useToastContext } from '../../../components/shared/ToastProvider';
+import ConfirmationDialog from '../../../components/shared/ConfirmationDialog';
 import AddUserModal from './AddUserModal';
 
 const UsersTab = () => {
+  const navigate = useNavigate();
+  const toast = useToastContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -133,8 +142,24 @@ const UsersTab = () => {
 
   const handleBulkAction = (action) => {
     console.log(`Bulk ${action} for users:`, selectedUsers);
-    // Implement bulk actions
+    toast.success(`Bulk ${action} applied to ${selectedUsers.length} users`);
     setSelectedUsers([]);
+  };
+
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setIsEditUserModalOpen(true);
+  };
+
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    toast.success(`User ${userToDelete.name} deleted successfully`);
+    setShowDeleteDialog(false);
+    setUserToDelete(null);
   };
 
   return (
@@ -255,13 +280,16 @@ const UsersTab = () => {
                         variant="ghost"
                         size="sm"
                         iconName="Edit"
-                        onClick={() => console.log('Edit user:', user?.id)}
+                        onClick={() => handleEditUser(user)}
+                        title="Edit user"
                       />
                       <Button
                         variant="ghost"
                         size="sm"
-                        iconName="MoreHorizontal"
-                        onClick={() => console.log('More actions:', user?.id)}
+                        iconName="Trash2"
+                        onClick={() => handleDeleteUser(user)}
+                        className="text-red-600 hover:text-red-700"
+                        title="Delete user"
                       />
                     </div>
                   </td>
@@ -323,10 +351,30 @@ const UsersTab = () => {
       <AddUserModal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
-        onUserAdded={(user) => {
-          console.log('User added:', user);
-          setIsAddUserModalOpen(false);
+      />
+
+      {/* Edit User Modal */}
+      <AddUserModal
+        isOpen={isEditUserModalOpen}
+        onClose={() => {
+          setIsEditUserModalOpen(false);
+          setSelectedUser(null);
         }}
+        user={selectedUser}
+        mode="edit"
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={confirmDelete}
+        title="Delete User"
+        description={`Are you sure you want to delete ${userToDelete?.name}? This action cannot be undone.`}
+        confirmLabel="Delete User"
+        cancelLabel="Cancel"
+        variant="danger"
+        icon="Trash2"
       />
     </div>
   );

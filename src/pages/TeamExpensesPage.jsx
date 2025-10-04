@@ -34,11 +34,16 @@ const TeamExpensesPage = () => {
   };
 
   const currentUser = getUserData();
+  const isManager = currentUser.role === 'manager';
+  const isAdmin = currentUser.role === 'admin';
 
-  const mockExpenses = [
+  // Manager's team member IDs (Engineering department)
+  const managerTeamIds = [2, 4, 5, 6]; // Mike Chen, Alex Rodriguez, Lisa Wang, John Smith
+
+  const allExpenses = [
     {
       id: 'EXP-001',
-      employee: { name: 'Sarah Johnson', id: 1 },
+      employee: { name: 'Sarah Johnson', id: 1, department: 'Marketing' },
       amount: 125.50,
       currency: 'USD',
       convertedAmount: 10450.75,
@@ -52,7 +57,7 @@ const TeamExpensesPage = () => {
     },
     {
       id: 'EXP-002',
-      employee: { name: 'Mike Chen', id: 2 },
+      employee: { name: 'Mike Chen', id: 2, department: 'Engineering' },
       amount: 450.00,
       currency: 'USD',
       convertedAmount: 37485.00,
@@ -66,7 +71,7 @@ const TeamExpensesPage = () => {
     },
     {
       id: 'EXP-003',
-      employee: { name: 'Emily Davis', id: 3 },
+      employee: { name: 'Emily Davis', id: 3, department: 'Sales' },
       amount: 89.99,
       currency: 'USD',
       convertedAmount: 7495.17,
@@ -80,7 +85,7 @@ const TeamExpensesPage = () => {
     },
     {
       id: 'EXP-004',
-      employee: { name: 'Sarah Johnson', id: 1 },
+      employee: { name: 'Alex Rodriguez', id: 4, department: 'Engineering' },
       amount: 320.00,
       currency: 'USD',
       convertedAmount: 26640.00,
@@ -94,7 +99,7 @@ const TeamExpensesPage = () => {
     },
     {
       id: 'EXP-005',
-      employee: { name: 'Alex Rodriguez', id: 4 },
+      employee: { name: 'Lisa Wang', id: 5, department: 'Engineering' },
       amount: 75.25,
       currency: 'USD',
       convertedAmount: 6267.31,
@@ -107,6 +112,13 @@ const TeamExpensesPage = () => {
       submittedAt: '2025-09-18T18:20:00Z'
     }
   ];
+
+  // Filter expenses based on role
+  // Manager sees only their team's expenses
+  // Admin sees all expenses
+  const mockExpenses = isManager
+    ? allExpenses.filter(expense => managerTeamIds.includes(expense.employee.id))
+    : allExpenses;
 
   const filteredExpenses = mockExpenses.filter(expense => {
     const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -139,7 +151,7 @@ const TeamExpensesPage = () => {
           <div className="mb-8">
             <Button
               variant="ghost"
-              onClick={() => navigate('/team')}
+              onClick={() => navigate(isAdmin ? '/admin/teams' : '/manager/team')}
               iconName="ArrowLeft"
               iconPosition="left"
               className="mb-4"
@@ -148,8 +160,14 @@ const TeamExpensesPage = () => {
             </Button>
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Team Expenses</h1>
-                <p className="text-gray-600 mt-2">View and manage all team expense submissions</p>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {isManager ? 'My Team Expenses' : 'Team Expenses'}
+                </h1>
+                <p className="text-gray-600 mt-2">
+                  {isManager 
+                    ? 'View and manage your Engineering team expense submissions'
+                    : 'View and manage all team expense submissions'}
+                </p>
               </div>
               <Button
                 variant="default"

@@ -54,7 +54,7 @@ const MobileBottomNavigation = ({
           id: 'team',
           label: 'Team',
           icon: 'Users',
-          path: '/team',
+          path: '/manager/team',
           roles: ['manager']
         },
         {
@@ -74,10 +74,10 @@ const MobileBottomNavigation = ({
       ],
       admin: [
         {
-          id: 'team',
-          label: 'Team',
+          id: 'teams',
+          label: 'Teams',
           icon: 'Users',
-          path: '/team',
+          path: '/admin/teams',
           roles: ['admin']
         },
         {
@@ -98,18 +98,8 @@ const MobileBottomNavigation = ({
     };
 
     const items = [...baseItems, ...(roleSpecificItems?.[userRole] || [])];
-    
-    // Add notifications/profile as the last item
-    items?.push({
-      id: 'profile',
-      label: 'Profile',
-      icon: 'User',
-      path: '/profile',
-      badge: notificationCount > 0 ? notificationCount : undefined,
-      roles: ['employee', 'manager', 'admin']
-    });
 
-    return items?.filter(item => item?.roles?.includes(userRole))?.slice(0, 5);
+    return items?.filter(item => item?.roles?.includes(userRole))?.slice(0, 4);
   };
 
   const navigationItems = getNavigationItems(user?.role);

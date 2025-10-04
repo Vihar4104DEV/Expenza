@@ -65,7 +65,7 @@ const TopNavigationBar = ({
         },
         {
           label: 'Team',
-          path: '/team',
+          path: '/manager/team',
           icon: 'Users',
           roles: ['manager']
         },
@@ -88,8 +88,8 @@ const TopNavigationBar = ({
           roles: ['admin']
         },
         {
-          label: 'Team',
-          path: '/team',
+          label: 'Teams',
+          path: '/admin/teams',
           icon: 'Users',
           roles: ['admin']
         },
@@ -263,14 +263,14 @@ const TopNavigationBar = ({
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <Button
+          {/* Mobile Menu Button - Hidden since we have bottom nav on mobile */}
+          {/* <Button
             variant="ghost"
             iconName="Menu"
             iconSize={20}
             className="md:hidden p-2"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          />
+          /> */}
         </div>
       </div>
       {/* Mobile Menu */}

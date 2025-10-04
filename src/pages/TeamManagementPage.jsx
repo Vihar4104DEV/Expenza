@@ -7,12 +7,14 @@ import Input from '../components/ui/Input';
 import TopNavigationBar from '../components/ui/TopNavigationBar';
 import MobileBottomNavigation from '../components/ui/MobileBottomNavigation';
 import StatusBadge from '../components/shared/StatusBadge';
+import AddTeamMemberModal from './manager/AddTeamMemberModal';
 import { getInitials, formatCurrency } from '../utils/formatters';
 
 const TeamManagementPage = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
 
   // Get current user from localStorage
   const getUserData = () => {
@@ -24,13 +26,17 @@ const TeamManagementPage = () => {
     return {
       name: role === 'admin' ? 'Admin User' : 'Manager User',
       email: role === 'admin' ? 'admin@company.com' : 'manager@company.com',
-      role: role
+      role: role,
+      department: role === 'manager' ? 'Engineering' : null // Manager's department
     };
   };
 
   const currentUser = getUserData();
+  const isManager = currentUser.role === 'manager';
+  const isAdmin = currentUser.role === 'admin';
 
-  const teamMembers = [
+  // All team members (for admin) or manager's team only
+  const allTeamMembers = [
     {
       id: 1,
       name: 'Sarah Johnson',
@@ -41,7 +47,8 @@ const TeamManagementPage = () => {
       status: 'active',
       totalExpenses: 12500,
       pendingExpenses: 3,
-      joinedDate: '2023-01-15'
+      joinedDate: '2023-01-15',
+      managerId: 'MGR-001'
     },
     {
       id: 2,
@@ -53,7 +60,8 @@ const TeamManagementPage = () => {
       status: 'active',
       totalExpenses: 10800,
       pendingExpenses: 2,
-      joinedDate: '2023-03-20'
+      joinedDate: '2023-03-20',
+      managerId: 'MGR-002' // Current manager's ID
     },
     {
       id: 3,
@@ -65,19 +73,21 @@ const TeamManagementPage = () => {
       status: 'active',
       totalExpenses: 9200,
       pendingExpenses: 5,
-      joinedDate: '2023-02-10'
+      joinedDate: '2023-02-10',
+      managerId: 'MGR-003'
     },
     {
       id: 4,
       name: 'Alex Rodriguez',
       email: 'alex.rodriguez@company.com',
-      department: 'Marketing',
+      department: 'Engineering',
       role: 'Employee',
       avatar: null,
       status: 'active',
       totalExpenses: 8500,
       pendingExpenses: 1,
-      joinedDate: '2023-04-05'
+      joinedDate: '2023-04-05',
+      managerId: 'MGR-002' // Current manager's ID
     },
     {
       id: 5,
@@ -89,9 +99,30 @@ const TeamManagementPage = () => {
       status: 'active',
       totalExpenses: 7800,
       pendingExpenses: 4,
-      joinedDate: '2023-05-12'
+      joinedDate: '2023-05-12',
+      managerId: 'MGR-002' // Current manager's ID
+    },
+    {
+      id: 6,
+      name: 'John Smith',
+      email: 'john.smith@company.com',
+      department: 'Engineering',
+      role: 'Employee',
+      avatar: null,
+      status: 'active',
+      totalExpenses: 6500,
+      pendingExpenses: 2,
+      joinedDate: '2023-06-01',
+      managerId: 'MGR-002' // Current manager's ID
     }
   ];
+
+  // Filter team members based on role
+  // Manager sees only their team (managerId: 'MGR-002')
+  // Admin sees all team members
+  const teamMembers = isManager 
+    ? allTeamMembers.filter(member => member.managerId === 'MGR-002' && member.department === 'Engineering')
+    : allTeamMembers;
 
   const filteredMembers = teamMembers.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,7 +135,10 @@ const TeamManagementPage = () => {
     navigate('/');
   };
 
-  const departments = ['all', 'Marketing', 'Engineering', 'Sales', 'Finance', 'HR'];
+  // Departments filter - Manager sees only their department
+  const departments = isManager 
+    ? ['all', 'Engineering'] 
+    : ['all', 'Marketing', 'Engineering', 'Sales', 'Finance', 'HR'];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,16 +150,25 @@ const TeamManagementPage = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Team Management</h1>
-                <p className="text-gray-600 mt-2">Manage your team members and their expenses</p>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {isManager ? 'My Team' : 'Team Management'}
+                </h1>
+                <p className="text-gray-600 mt-2">
+                  {isManager 
+                    ? `Manage your ${teamMembers.length} team members in Engineering` 
+                    : 'Manage all team members and their expenses'}
+                </p>
               </div>
-              <Button
-                variant="default"
-                iconName="UserPlus"
-                iconPosition="left"
-              >
-                Add Team Member
-              </Button>
+              {isManager && (
+                <Button
+                  variant="default"
+                  iconName="UserPlus"
+                  iconPosition="left"
+                  onClick={() => setShowAddMemberModal(true)}
+                >
+                  Add Team Member
+                </Button>
+              )}
             </div>
 
             {/* Filters */}
@@ -269,6 +312,13 @@ const TeamManagementPage = () => {
       </main>
 
       <MobileBottomNavigation user={currentUser} notificationCount={5} />
+
+      {/* Add Team Member Modal */}
+      <AddTeamMemberModal
+        isOpen={showAddMemberModal}
+        onClose={() => setShowAddMemberModal(false)}
+        department={currentUser.department || 'Engineering'}
+      />
     </div>
   );
 };

@@ -6,10 +6,12 @@ import ProtectedRoute from "components/ProtectedRoute";
 import { ToastProvider } from "components/shared/ToastProvider";
 import NotFound from "pages/NotFound";
 import LandingPage from './pages/LandingPage';
+import OTPVerificationPage from './pages/auth/OTPVerificationPage';
 
 // Admin Pages
 import AdminDashboard from './pages/admin-dashboard';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
+import AdminTeamsPage from './pages/admin/AdminTeamsPage';
 
 // Employee Pages
 import EmployeeDashboard from './pages/employee-dashboard';
@@ -37,6 +39,7 @@ const Routes = () => {
           <RouterRoutes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/verify-otp" element={<OTPVerificationPage />} />
             
             {/* Admin Routes - Only accessible by admin */}
             <Route 
@@ -100,14 +103,6 @@ const Routes = () => {
               } 
             />
             <Route 
-              path="/team" 
-              element={
-                <ProtectedRoute allowedRoles={['manager', 'admin']}>
-                  <TeamManagementPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
               path="/team-expenses" 
               element={
                 <ProtectedRoute allowedRoles={['manager', 'admin']}>
@@ -125,6 +120,22 @@ const Routes = () => {
             />
             
             {/* Shared Routes - Accessible by all authenticated users */}
+            <Route 
+              path="/manager/team" 
+              element={
+                <ProtectedRoute allowedRoles={['manager']}>
+                  <TeamManagementPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/teams" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminTeamsPage />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/expense/:id" 
               element={

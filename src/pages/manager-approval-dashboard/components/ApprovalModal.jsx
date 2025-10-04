@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
-
 import Select from '../../../components/ui/Select';
+import { useToastContext } from '../../../components/shared/ToastProvider';
 
 const ApprovalModal = ({
   isOpen = false,
@@ -12,6 +12,7 @@ const ApprovalModal = ({
   type = 'approve', // 'approve' or 'reject'
   className = ''
 }) => {
+  const toast = useToastContext();
   const [comments, setComments] = useState('');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +40,10 @@ const ApprovalModal = ({
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    if (!reason) return;
+    if (!reason) {
+      toast.error('Please select a reason');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -50,9 +54,18 @@ const ApprovalModal = ({
         comments: comments?.trim(),
         timestamp: new Date()?.toISOString()
       });
+      
+      // Show success toast
+      if (type === 'approve') {
+        toast.success(`Expense ${expense?.id} approved successfully!`);
+      } else {
+        toast.success(`Expense ${expense?.id} rejected successfully!`);
+      }
+      
       handleClose();
     } catch (error) {
       console.error('Error processing approval:', error);
+      toast.error('Failed to process approval. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

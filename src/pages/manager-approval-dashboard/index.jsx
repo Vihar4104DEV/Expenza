@@ -308,18 +308,16 @@ const ManagerApprovalDashboard = () => {
                 </Button>
                 <Button
                   variant="default"
-                  onClick={() => navigate('/team')}
+                  onClick={() => navigate('/manager/team')}
                   iconName="Users"
                   iconPosition="left"
                   iconSize={16}
                 >
-                  Manage Team
+                  View Team Members
                 </Button>
               </div>
             </div>
           </div>
-
-          {/* Pending Queue Stats */}
           <PendingQueueStats stats={queueStats} />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -135,7 +135,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
       const selectedCountry = countries.find(c => c.value === formData.country);
       const currency = selectedCountry?.currency || 'USD';
       
-      // Mock user creation
+      // Mock user creation (don't save to localStorage yet - wait for OTP verification)
       const userData = {
         fullName: formData.fullName,
         email: formData.email,
@@ -147,15 +147,14 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         createdAt: new Date().toISOString()
       };
       
-      localStorage.setItem('userToken', 'mock-token-' + Date.now());
-      localStorage.setItem('userRole', 'employee');
-      localStorage.setItem('userData', JSON.stringify(userData));
+      // Store temporarily for OTP verification
+      sessionStorage.setItem('pendingUserData', JSON.stringify(userData));
       
       setIsLoading(false);
       onClose();
       
-      // Navigate to employee dashboard
-      navigate('/employee-dashboard');
+      // Navigate to OTP verification page
+      navigate('/verify-otp', { state: { email: formData.email } });
     }, 2000);
   };
 
@@ -334,7 +333,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                     id="country"
                     name="country"
                     value={formData.country}
-                    onChange={handleChange}
+                    onChange={(value) => setFormData(prev => ({ ...prev, country: value }))}
                     error={errors.country}
                     disabled={isLoading || loadingCountries}
                     options={countries}

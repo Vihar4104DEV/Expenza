@@ -15,14 +15,16 @@ const ReportsPage = () => {
   const currentUser = {
     name: 'David Wilson',
     email: 'david.wilson@company.com',
-    role: 'manager'
+    role: 'manager',
+    department: 'Engineering',
+    teamSize: 4
   };
 
   const handleLogout = () => {
     navigate('/');
   };
 
-  // Mock data
+  // Mock data - Manager sees only their team's data (Engineering)
   const monthlyData = [
     { month: 'Jan', amount: 12500, count: 45 },
     { month: 'Feb', amount: 15200, count: 52 },
@@ -40,40 +42,40 @@ const ReportsPage = () => {
     { name: 'Lodging', value: 15500, color: '#8B5CF6' }
   ];
 
+  // Top spenders - Only Engineering team members
   const topSpenders = [
-    { name: 'Sarah Johnson', amount: 12500, count: 45, department: 'Marketing' },
     { name: 'Mike Chen', amount: 10800, count: 38, department: 'Engineering' },
-    { name: 'Emily Davis', amount: 9200, count: 42, department: 'Sales' },
-    { name: 'Alex Rodriguez', amount: 8500, count: 35, department: 'Marketing' },
-    { name: 'Lisa Wang', amount: 7800, count: 28, department: 'Engineering' }
+    { name: 'Alex Rodriguez', amount: 8500, count: 35, department: 'Engineering' },
+    { name: 'Lisa Wang', amount: 7800, count: 28, department: 'Engineering' },
+    { name: 'John Smith', amount: 6500, count: 25, department: 'Engineering' }
   ];
 
   const stats = [
     {
-      title: 'Total Expenses',
-      value: '$89,000',
+      title: 'Team Total Expenses',
+      value: '$34,600',
       change: '+12.5%',
       icon: 'DollarSign',
       color: 'blue'
     },
     {
-      title: 'Average Expense',
-      value: '$342',
-      change: '+5.2%',
-      icon: 'TrendingUp',
+      title: 'Team Members',
+      value: '4',
+      change: 'Active',
+      icon: 'Users',
       color: 'green'
     },
     {
       title: 'Total Transactions',
-      value: '260',
+      value: '126',
       change: '+8.1%',
       icon: 'Receipt',
       color: 'purple'
     },
     {
-      title: 'Pending Amount',
-      value: '$12,500',
-      change: '-3.2%',
+      title: 'Pending Approvals',
+      value: '8',
+      change: 'This week',
       icon: 'Clock',
       color: 'yellow'
     }
@@ -89,8 +91,8 @@ const ReportsPage = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-                <p className="text-gray-600 mt-2">Track and analyze expense trends</p>
+                <h1 className="text-3xl font-bold text-gray-900">My Team Reports & Analytics</h1>
+                <p className="text-gray-600 mt-2">Track and analyze your Engineering team's expense trends</p>
               </div>
               <div className="flex items-center space-x-3">
                 <select
@@ -192,8 +194,8 @@ const ReportsPage = () => {
           {/* Top Spenders Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Top Spenders</h2>
-              <Button variant="outline" size="sm">View All</Button>
+              <h2 className="text-lg font-semibold text-gray-900">Team Member Expenses</h2>
+              <Button variant="outline" size="sm" onClick={() => navigate('/team-expenses')}>View All</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
