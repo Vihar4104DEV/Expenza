@@ -157,15 +157,15 @@ const TopNavigationBar = ({
   };
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 bg-card border-b border-border ${className}`}>
+    <header className={`fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm ${className}`}>
       <div className="flex items-center justify-between h-16 px-4 lg:px-6">
         {/* Logo */}
         <div className="flex items-center">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <Icon name="Receipt" size={20} color="white" />
             </div>
-            <span className="text-xl font-semibold text-foreground">Expenza</span>
+            <span className="text-xl font-semibold text-gray-900">Expenza</span>
           </div>
         </div>
 

@@ -138,6 +138,54 @@ const userService = {
     }
     
     return [];
+  },
+
+  // ViewSet endpoints
+  getUsersViewSet: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.role) queryParams.append('role', params.role);
+    if (params.department) queryParams.append('department', params.department);
+    if (params.isManagerApprover !== undefined) queryParams.append('is_manager_approver', params.isManagerApprover);
+    if (params.isActive !== undefined) queryParams.append('is_active', params.isActive);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.ordering) queryParams.append('ordering', params.ordering);
+    
+    const queryString = queryParams.toString();
+    return await api.get(`/users/users/${queryString ? '?' + queryString : ''}`);
+  },
+
+  getCurrentUser: async () => {
+    return await api.get('/users/users/me/');
+  },
+
+  changeUserPassword: async (oldPassword, newPassword) => {
+    return await api.put('/users/users/change_password/', {
+      old_password: oldPassword,
+      new_password: newPassword
+    });
+  },
+
+  getSubordinates: async () => {
+    return await api.get('/users/users/subordinates/');
+  },
+
+  getTeamExpenses: async () => {
+    return await api.get('/users/users/team_expenses/');
+  },
+
+  getPendingApprovals: async () => {
+    return await api.get('/users/users/pending_approvals/');
+  },
+
+  updateUserRole: async (userId, role, managerId = null) => {
+    return await api.put(`/users/users/${userId}/update_role/`, {
+      role,
+      manager: managerId
+    });
+  },
+
+  getCompanyApprovers: async () => {
+    return await api.get('/users/users/approvers/');
   }
 };
 

@@ -3,7 +3,27 @@
  * Central export point for all API services
  */
 
-export { default as api } from './api';
-export { default as authService } from './authService';
-export { default as userService } from './userService';
-export { default as expenseService } from './expenseService';
+import api from './api';
+import authService from './authService';
+import userService from './userService';
+import expenseService from './expenseService';
+import companyService from './companyService';
+import approvalService from './approvalService';
+
+export {
+  api,
+  authService,
+  userService,
+  expenseService,
+  companyService,
+  approvalService
+};
+
+export default {
+  api,
+  authService,
+  userService,
+  expenseService,
+  companyService,
+  approvalService
+};

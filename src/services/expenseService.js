@@ -291,8 +291,90 @@ const expenseService = {
    * Get countries and their currencies
    * @returns {Promise} API response with countries and currencies
    */
-  getCountriesAndCurrencies: async () => {
-    return await api.get('/expenses/expenses/countries-currencies/');
+  getCountriesAndCurrencies: async () => {    return await api.get('/expenses/expenses/countries-currencies/');
+  },
+
+  /**
+   * Get my expenses
+   * @param {string} status - Optional status filter
+   * @returns {Promise} API response
+   */
+  getMyExpenses: async (status = null) => {
+    const url = status 
+      ? `/expenses/expenses/my_expenses/?status=${status}`
+      : '/expenses/expenses/my_expenses/';
+    return await api.get(url);
+  },
+
+  /**
+   * Get pending approval expenses
+   * @returns {Promise} API response
+   */
+  getPendingApprovalExpenses: async () => {
+    return await api.get('/expenses/expenses/pending_approval/');
+  },
+
+  /**
+   * Approve or reject expense
+   * @param {string} expenseId - Expense ID
+   * @param {Object} decision - Decision data
+   * @returns {Promise} API response
+   */
+  approveRejectExpense: async (expenseId, decision) => {
+    return await api.post(`/expenses/expenses/${expenseId}/approve/`, {
+      decision: decision.decision, // 'Approved' or 'Rejected'
+      comments: decision.comments
+    });
+  },
+
+  /**
+   * Escalate expense
+   * @param {string} expenseId - Expense ID
+   * @param {Object} data - Escalation data
+   * @returns {Promise} API response
+   */
+  escalateExpense: async (expenseId, data) => {
+    return await api.post(`/expenses/expenses/${expenseId}/escalate/`, {
+      escalated_to: data.escalatedTo,
+      reason: data.reason
+    });
+  },
+
+  /**
+   * Get approval history for expense
+   * @param {string} expenseId - Expense ID
+   * @returns {Promise} API response
+   */
+  getApprovalHistory: async (expenseId) => {
+    return await api.get(`/expenses/expenses/${expenseId}/approval_history/`);
+  },
+
+  /**
+   * Get expenses by status
+   * @param {string} status - Status filter
+   * @returns {Promise} API response
+   */
+  getExpensesByStatus: async (status) => {
+    return await api.get(`/expenses/expenses/by_status/?status=${status}`);
+  },
+
+  /**
+   * Process receipt with OCR
+   * @param {Object} data - Receipt data
+   * @returns {Promise} API response
+   */
+  processReceipt: async (data) => {
+    return await api.post('/expenses/expenses/process_receipt/', {
+      receipt_image: data.receiptImage
+    });
+  },
+
+  /**
+   * Get supported currencies
+   * @returns {Promise} API response
+   */
+  getSupportedCurrencies: async () => {
+    return await api.get('/expenses/expenses/currencies/');
   }
 };
 
