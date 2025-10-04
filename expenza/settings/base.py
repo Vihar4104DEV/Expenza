@@ -51,7 +51,11 @@ THIRD_PARTY_APPS = [
 ] 
 
 LOCAL_APPS = [
-
+    'apps.core',
+    'apps.companies',
+    'apps.users',
+    'apps.expenses',
+    'apps.approvals',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -134,7 +138,7 @@ TEMPLATES = [
 
 
 ### AUTH CONFIGURATION ####
-AUTH_USER_MODEL = "user.User"
+AUTH_USER_MODEL = "users.User"
 AUTH_USER_ID_FIELD = "id"
 
 AUTH_PASSWORD_VALIDATORS = [
