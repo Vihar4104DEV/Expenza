@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from apps.core.validators import validate_email_address, validate_password_strength
 from apps.users.services import build_user_payload
+from apps.companies.models import Company
 from ..services import issue_otp, verify_otp
 
 User = get_user_model()
@@ -16,6 +17,12 @@ class AdminRegisterSerializer(serializers.Serializer):
     admin_email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     employee_id = serializers.CharField(max_length=50,required=False)
+
+    def validate_company_name(self, value):
+        """Ensure company name is unique."""
+        if Company.objects.filter(name__iexact=value.strip()).exists():
+            raise serializers.ValidationError("A company with this name already exists. Please choose a different name.")
+        return value.strip()
 
     def validate_admin_email(self, value):
         email = validate_email_address(value)
